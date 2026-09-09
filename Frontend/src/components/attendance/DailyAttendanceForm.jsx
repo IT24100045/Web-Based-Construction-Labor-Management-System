@@ -89,24 +89,39 @@ const DailyAttendanceSheet = ({
     setAttendanceSheet(updated);
   };
 
-  const handleSubmit = (e) => {
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (siteWorkers.length === 0) return;
 
-    const recordsToSave = siteWorkers.map((worker) => {
-      const data = attendanceSheet[worker.id] || { status: 'Present', regularHours: 8, overtimeHours: 0 };
-      return {
-        laborerId: worker.id,
-        siteId: siteId,
-        date: date,
-        status: data.status,
-        regularHours: parseFloat(data.regularHours) || 0,
-        overtimeHours: parseFloat(data.overtimeHours) || 0,
-        otReason: data.otReason || '',
-        supervisorNotes: data.supervisorNotes || ''
-      };
-    });
+    setIsSaving(true);
+    setSaveSuccess(false);
 
-    onSave(recordsToSave);
+    try {
+      const recordsToSave = siteWorkers.map((worker) => {
+        const data = attendanceSheet[worker.id] || { status: 'Present', regularHours: 8, overtimeHours: 0 };
+        return {
+          laborerId: worker.id,
+          siteId: siteId || worker.assignedSiteId || '',
+          date: date,
+          status: data.status,
+          regularHours: parseFloat(data.regularHours) || 0,
+          overtimeHours: parseFloat(data.overtimeHours) || 0,
+          otReason: data.otReason || '',
+          supervisorNotes: data.supervisorNotes || ''
+        };
+      });
+
+      await onSave(recordsToSave);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to save attendance:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Metrics calculation
@@ -316,9 +331,24 @@ const DailyAttendanceSheet = ({
           <button
             type="submit"
             className="btn btn-primary"
+            disabled={isSaving}
           >
-            <Save size={18} />
-            Save Daily Attendance Sheet ({date})
+            {isSaving ? (
+              <>
+                <Save size={18} className="spin-icon" />
+                <span>Saving Attendance...</span>
+              </>
+            ) : saveSuccess ? (
+              <>
+                <Check size={18} color="#34d399" />
+                <span>Attendance Saved Successfully!</span>
+              </>
+            ) : (
+              <>
+                <Save size={18} />
+                <span>Save Daily Attendance Sheet ({date})</span>
+              </>
+            )}
           </button>
         </div>
       </form>
@@ -330,12 +360,17 @@ const DailyAttendanceForm = () => {
   const { sites, laborers, attendance, recordAttendance } = useLabor();
 
   // Selected site and date
-  const [selectedSiteId, setSelectedSiteId] = useState(sites[0]?.id || '');
+  const [selectedSiteId, setSelectedSiteId] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Site laborers
-  const siteWorkers = laborers.filter((l) => l.assignedSiteId === selectedSiteId);
-  const selectedSite = sites.find((s) => s.id === selectedSiteId);
+  // Resolve effective site: use selectedSiteId if valid, otherwise fallback to first available site
+  const effectiveSiteId = selectedSiteId && sites.some((s) => s.id === selectedSiteId)
+    ? selectedSiteId
+    : (sites[0]?.id || '');
+
+  // Site laborers: allocated to active site
+  const siteWorkers = laborers.filter((l) => l.assignedSiteId === effectiveSiteId);
+  const selectedSite = sites.find((s) => s.id === effectiveSiteId);
 
   return (
     <div className="card" style={{ marginBottom: '32px' }}>
@@ -357,7 +392,7 @@ const DailyAttendanceForm = () => {
             <select
               className="form-control"
               style={{ minWidth: '220px' }}
-              value={selectedSiteId}
+              value={effectiveSiteId}
               onChange={(e) => setSelectedSiteId(e.target.value)}
             >
               {sites.map((site) => (
@@ -380,11 +415,11 @@ const DailyAttendanceForm = () => {
         </div>
       </div>
 
-      {/* Keyed child component: cleanly resets state when selectedSiteId or selectedDate changes without useEffect cascading renders */}
+      {/* Keyed child component: cleanly resets state when site, date, or attendance changes */}
       <DailyAttendanceSheet
-        key={`${selectedSiteId}_${selectedDate}`}
+        key={`${effectiveSiteId}_${selectedDate}_${attendance.length}`}
         site={selectedSite}
-        siteId={selectedSiteId}
+        siteId={effectiveSiteId}
         date={selectedDate}
         siteWorkers={siteWorkers}
         attendance={attendance}

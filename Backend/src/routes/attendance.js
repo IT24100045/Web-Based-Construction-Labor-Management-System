@@ -69,7 +69,21 @@ router.post('/', async (req, res) => {
         supervisorNotes = ''
       } = rec;
 
-      if (!laborerId || !siteId || !date) {
+      let effectiveSiteId = siteId;
+      if (!effectiveSiteId && laborerId) {
+        const [labRow] = await query('SELECT assigned_site_id FROM laborers WHERE id = ?', [laborerId]);
+        if (labRow && labRow.assigned_site_id) {
+          effectiveSiteId = labRow.assigned_site_id;
+        }
+      }
+      if (!effectiveSiteId) {
+        const [defaultSite] = await query('SELECT id FROM sites LIMIT 1');
+        if (defaultSite && defaultSite.id) {
+          effectiveSiteId = defaultSite.id;
+        }
+      }
+
+      if (!laborerId || !effectiveSiteId || !date) {
         continue;
       }
 
@@ -90,7 +104,7 @@ router.post('/', async (req, res) => {
       `, [
         recordId,
         laborerId,
-        siteId,
+        effectiveSiteId,
         date,
         status,
         parseFloat(regularHours) || 0,
@@ -115,6 +129,10 @@ router.post('/', async (req, res) => {
       `, [laborerId, date]);
 
       if (saved) savedRecords.push(saved);
+    }
+
+    if (savedRecords.length === 0) {
+      return res.status(400).json({ error: 'No valid attendance records could be saved. Please verify laborer and site selection.' });
     }
 
     res.status(201).json(savedRecords);
