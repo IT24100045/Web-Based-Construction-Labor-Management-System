@@ -23,9 +23,9 @@ const PaymentReceiptModal = ({ isOpen, onClose, payment, laborerWage }) => {
         <div className="receipt-header">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '4px' }}>
             <HardHat size={26} color="var(--amber-primary)" />
-            <span className="receipt-logo">BUILDFORCE CONSTRUCTION</span>
+            <span className="receipt-logo">J A L ENTERPRISES</span>
           </div>
-          <div className="receipt-tagline">Labor Payroll & Compensation Voucher</div>
+          <div className="receipt-tagline">Construction Labour Payroll & Compensation Voucher</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
             VOUCHER ID: {payment.id} &bull; ISSUED: {payment.date}
           </div>

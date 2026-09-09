@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LaborProvider } from './context/LaborContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/common/Sidebar';
 import Navbar from './components/common/Navbar';
 import Toast from './components/common/Toast';
@@ -12,10 +13,11 @@ import AddLaborerModal from './components/labor/AddLaborerModal';
 import AddSiteModal from './components/sites/AddSiteModal';
 import RecordPaymentModal from './components/wages/RecordPaymentModal';
 import PaymentReceiptModal from './components/wages/PaymentReceiptModal';
+import HomePage from './components/home/HomePage';
 import './App.css';
 
-function MainApp() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+function MainApp({ initialTab = 'dashboard' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Global quick modals
@@ -113,11 +115,34 @@ function MainApp() {
   );
 }
 
+function AppContent() {
+  const { isAuthenticated, currentUser } = useAuth();
+
+  // If user is not authenticated, render the J A L Enterprises Homepage & Role Login Portal
+  if (!isAuthenticated || !currentUser) {
+    return (
+      <>
+        <HomePage />
+        <Toast />
+      </>
+    );
+  }
+
+  return (
+    <MainApp
+      key={currentUser.id}
+      initialTab={currentUser.defaultTab || 'dashboard'}
+    />
+  );
+}
+
 function App() {
   return (
-    <LaborProvider>
-      <MainApp />
-    </LaborProvider>
+    <AuthProvider>
+      <LaborProvider>
+        <AppContent />
+      </LaborProvider>
+    </AuthProvider>
   );
 }
 

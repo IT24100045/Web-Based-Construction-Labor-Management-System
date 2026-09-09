@@ -5,12 +5,16 @@ import {
   CalendarCheck,
   Receipt,
   HardHat,
-  RefreshCw
+  RefreshCw,
+  LogOut,
+  Home
 } from 'lucide-react';
 import { useLabor } from '../../context/LaborContext';
+import { useAuth } from '../../context/AuthContext';
 
 const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
   const { laborers, sites, refreshAllData, isLoading } = useLabor();
+  const { currentUser, logout } = useAuth();
 
   const navItems = [
     {
@@ -67,8 +71,8 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
             <HardHat size={24} />
           </div>
           <div className="brand-info">
-            <h2>BUILDFORCE</h2>
-            <span>Labor Management</span>
+            <h2>J A L</h2>
+            <span>Enterprises</span>
           </div>
         </div>
 
@@ -108,11 +112,40 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
 
         <div className="sidebar-footer">
           <div className="supervisor-badge">
-            <div className="supervisor-avatar">NS</div>
-            <div className="supervisor-info">
-              <span className="supervisor-name">Eng. N. Samarasinghe</span>
-              <span className="supervisor-role">Chief Site Supervisor</span>
+            <div
+              className="supervisor-avatar"
+              style={{
+                background: currentUser?.badgeBg || 'var(--amber-bg)',
+                color: currentUser?.badgeColor || 'var(--amber-primary)',
+                border: `1px solid ${currentUser?.badgeColor || 'var(--amber-primary)'}40`
+              }}
+            >
+              {currentUser?.avatar || 'JL'}
             </div>
+            <div className="supervisor-info">
+              <span className="supervisor-name">{currentUser?.name || 'Authorized Officer'}</span>
+              <span className="supervisor-role">{currentUser?.title || 'System Operator'}</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            <button
+              onClick={logout}
+              className="btn btn-secondary btn-sm"
+              style={{
+                width: '100%',
+                justifyContent: 'center',
+                gap: '8px',
+                fontSize: '0.78rem',
+                padding: '8px 12px',
+                borderColor: 'var(--border-medium)',
+                background: 'rgba(7, 11, 20, 0.6)'
+              }}
+              title="Return to J A L Enterprises Homepage & Portal"
+            >
+              <LogOut size={14} />
+              <span>Exit to Portal</span>
+            </button>
           </div>
         </div>
       </aside>
