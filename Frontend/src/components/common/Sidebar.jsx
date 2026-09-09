@@ -7,14 +7,14 @@ import {
   HardHat,
   RefreshCw,
   LogOut,
-  Home
+  ShieldCheck
 } from 'lucide-react';
 import { useLabor } from '../../context/LaborContext';
 import { useAuth } from '../../context/AuthContext';
 
 const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
   const { laborers, sites, refreshAllData, isLoading } = useLabor();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, usersList } = useAuth();
 
   const navItems = [
     {
@@ -23,6 +23,16 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
       icon: <LayoutDashboard size={19} />,
       badge: null
     },
+    ...(currentUser?.role === 'admin'
+      ? [
+          {
+            id: 'users',
+            label: 'User Accounts',
+            icon: <ShieldCheck size={19} />,
+            badge: usersList.length || 'Admin'
+          }
+        ]
+      : []),
     {
       id: 'laborers',
       label: 'Labor Directory',

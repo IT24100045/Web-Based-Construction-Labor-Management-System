@@ -14,6 +14,7 @@ import AddSiteModal from './components/sites/AddSiteModal';
 import RecordPaymentModal from './components/wages/RecordPaymentModal';
 import PaymentReceiptModal from './components/wages/PaymentReceiptModal';
 import HomePage from './components/home/HomePage';
+import UserManagementView from './components/users/UserManagementView';
 import './App.css';
 
 function MainApp({ initialTab = 'dashboard' }) {
@@ -28,6 +29,8 @@ function MainApp({ initialTab = 'dashboard' }) {
 
   const renderActiveTab = () => {
     switch (activeTab) {
+      case 'users':
+        return <UserManagementView />;
       case 'laborers':
         return (
           <LaborerDirectory

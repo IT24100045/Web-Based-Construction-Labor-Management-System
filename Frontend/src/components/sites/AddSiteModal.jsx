@@ -4,6 +4,14 @@ import { useLabor } from '../../context/LaborContext';
 import { PROJECT_TYPES } from '../../utils/mockData';
 import { Building2, AlertCircle } from 'lucide-react';
 
+const getTodayDateString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const AddSiteModal = ({ isOpen, onClose }) => {
   const { addSite, sites } = useLabor();
 
@@ -13,7 +21,7 @@ const AddSiteModal = ({ isOpen, onClose }) => {
     location: '',
     type: 'Commercial',
     client: '',
-    startDate: '2026-09-08',
+    startDate: getTodayDateString(),
     endDate: '',
     budget: '50000000',
     manager: 'Eng. Nihal Samarasinghe',
@@ -40,7 +48,11 @@ const AddSiteModal = ({ isOpen, onClose }) => {
         if (!value.trim()) err = 'Client name is required.';
         break;
       case 'startDate':
-        if (!value) err = 'Start date is required.';
+        if (!value) {
+          err = 'Project commencement date is required.';
+        } else if (value < getTodayDateString()) {
+          err = 'Commencement date cannot be chosen as a past date.';
+        }
         break;
       case 'endDate':
         if (!value) {
@@ -126,7 +138,7 @@ const AddSiteModal = ({ isOpen, onClose }) => {
       location: '',
       type: 'Commercial',
       client: '',
-      startDate: '2026-09-08',
+      startDate: getTodayDateString(),
       endDate: '',
       budget: '50000000',
       manager: 'Eng. Nihal Samarasinghe',
@@ -251,12 +263,16 @@ const AddSiteModal = ({ isOpen, onClose }) => {
               id="site-start-date"
               type="date"
               name="startDate"
+              min={getTodayDateString()}
               value={form.startDate}
               onChange={handleChange}
               onBlur={handleBlur}
-              className="form-control"
+              className={`form-control ${touched.startDate && errors.startDate ? 'is-invalid' : ''}`}
               required
             />
+            {touched.startDate && errors.startDate && (
+              <span className="form-error-msg"><AlertCircle size={13} /> {errors.startDate}</span>
+            )}
           </div>
 
           <div className="form-group">
@@ -267,6 +283,7 @@ const AddSiteModal = ({ isOpen, onClose }) => {
               id="site-end-date"
               type="date"
               name="endDate"
+              min={form.startDate || getTodayDateString()}
               value={form.endDate}
               onChange={handleChange}
               onBlur={handleBlur}

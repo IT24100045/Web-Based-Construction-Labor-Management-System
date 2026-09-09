@@ -44,17 +44,16 @@ const HomePage = ({ onLoginSuccess }) => {
     setIsSubmitting(true);
     setLoginMessage(null);
 
-    setTimeout(async () => {
-      try {
-        const user = await login(selectedRoleKey, passwordInput);
-        if (onLoginSuccess) {
-          onLoginSuccess(user);
-        }
-      } catch (err) {
-        setLoginMessage({ type: 'error', text: err.message });
-        setIsSubmitting(false);
+    try {
+      const identifier = emailInput.trim() || selectedRoleKey;
+      const user = await login(identifier, passwordInput);
+      if (onLoginSuccess) {
+        onLoginSuccess(user);
       }
-    }, 500);
+    } catch (err) {
+      setLoginMessage({ type: 'error', text: err.message });
+      setIsSubmitting(false);
+    }
   };
 
   const getRoleIcon = (roleId, size = 18) => {
@@ -215,18 +214,18 @@ const HomePage = ({ onLoginSuccess }) => {
             <form className="portal-form" onSubmit={handleSubmitLogin}>
               <div className="form-group-home">
                 <label htmlFor="portal-email">
-                  <span>Official Email Address</span>
+                  <span>Username or Email Address</span>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Required</span>
                 </label>
                 <div className="form-input-wrapper">
                   <Mail size={16} className="input-icon" />
                   <input
                     id="portal-email"
-                    type="email"
+                    type="text"
                     className="form-input-home"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="name@jalenterprises.lk"
+                    placeholder="e.g. admin or admin@jalenterprises.lk"
                     required
                   />
                 </div>

@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { authApi, usersApi } from '../services/api';
 
 // Enterprise Roles for J A L Enterprises Labour Management System
 export const SYSTEM_ROLES = [
@@ -14,12 +15,12 @@ export const SYSTEM_ROLES = [
     badgeColor: '#a855f7',
     badgeBg: 'rgba(168, 85, 247, 0.15)',
     defaultTab: 'dashboard',
-    allowedTabs: ['dashboard', 'laborers', 'sites', 'attendance', 'wages'],
+    allowedTabs: ['dashboard', 'users', 'laborers', 'sites', 'attendance', 'wages'],
     responsibilities: [
       'Complete administrative control & system oversight',
-      'Manage enterprise operational analytics & sites',
+      'Manage user accounts, roles, and security access',
       'Audit workforce attendance, wages, and payments',
-      'Configure system master records and security'
+      'Configure system master records and operational parameters'
     ],
     tagline: 'Enterprise-wide management & operations'
   },
@@ -105,6 +106,66 @@ export const SYSTEM_ROLES = [
   }
 ];
 
+export const getRoleMeta = (role) => {
+  switch (role) {
+    case 'admin':
+      return {
+        roleLabel: 'System Administrator',
+        badgeColor: '#a855f7',
+        badgeBg: 'rgba(168, 85, 247, 0.15)',
+        defaultTab: 'dashboard',
+        allowedTabs: ['dashboard', 'users', 'laborers', 'sites', 'attendance', 'wages']
+      };
+    case 'project_manager':
+      return {
+        roleLabel: 'Project Manager',
+        badgeColor: '#38bdf8',
+        badgeBg: 'rgba(56, 189, 248, 0.15)',
+        defaultTab: 'sites',
+        allowedTabs: ['dashboard', 'sites', 'laborers', 'wages']
+      };
+    case 'site_supervisor':
+      return {
+        roleLabel: 'Site Supervisor',
+        badgeColor: '#f59e0b',
+        badgeBg: 'rgba(245, 158, 11, 0.15)',
+        defaultTab: 'attendance',
+        allowedTabs: ['dashboard', 'attendance', 'sites', 'laborers']
+      };
+    case 'hr_manager':
+      return {
+        roleLabel: 'HR Manager',
+        badgeColor: '#10b981',
+        badgeBg: 'rgba(16, 185, 129, 0.15)',
+        defaultTab: 'laborers',
+        allowedTabs: ['dashboard', 'laborers', 'sites']
+      };
+    case 'payroll_officer':
+      return {
+        roleLabel: 'Payroll Officer',
+        badgeColor: '#f43f5e',
+        badgeBg: 'rgba(244, 63, 94, 0.15)',
+        defaultTab: 'wages',
+        allowedTabs: ['dashboard', 'wages', 'laborers']
+      };
+    default:
+      return {
+        roleLabel: 'Operations Officer',
+        badgeColor: '#f59e0b',
+        badgeBg: 'rgba(245, 158, 11, 0.15)',
+        defaultTab: 'dashboard',
+        allowedTabs: ['dashboard']
+      };
+  }
+};
+
+const getInitials = (name) => {
+  if (!name) return 'JL';
+  const parts = name.replace(/^(Eng\.|Mr\.|Mrs\.|Ms\.|Dr\.)\s*/i, '').trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  return parts[0].slice(0, 2).toUpperCase();
+};
+
 const AuthContext = createContext();
 
 const STORAGE_KEY = 'jal_enterprises_auth_user';
@@ -122,6 +183,9 @@ export const AuthProvider = ({ children }) => {
     return null;
   });
 
+  const [usersList, setUsersList] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
   useEffect(() => {
     try {
       if (currentUser) {
@@ -134,21 +198,69 @@ export const AuthProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  // Login handler supporting either role ID or user object or email/password
-  const login = async (roleOrEmail, _password = '') => {
-    // 1. Direct role match by id / key
-    let matchedRole = SYSTEM_ROLES.find(
-      (r) => r.id === roleOrEmail || r.key === roleOrEmail
-    );
+  // Load all users from DB if admin
+  const fetchUsers = useCallback(async () => {
+    setIsLoadingUsers(true);
+    try {
+      const list = await usersApi.getAll();
+      setUsersList(list);
+      return list;
+    } catch (err) {
+      console.error('Failed to fetch users from database:', err);
+      return [];
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, []);
 
-    // 2. Match by email
-    if (!matchedRole) {
-      matchedRole = SYSTEM_ROLES.find(
-        (r) => r.email.toLowerCase() === (roleOrEmail || '').toLowerCase().trim()
-      );
+  useEffect(() => {
+    if (currentUser?.role !== 'admin') return;
+    let isMounted = true;
+    usersApi.getAll().then((list) => {
+      if (isMounted && Array.isArray(list)) {
+        setUsersList(list);
+      }
+    }).catch((err) => {
+      console.error('Failed to load initial users:', err);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser?.role]);
+
+  // Login handler supporting database authentication with fallback
+  const login = async (identifier, password = '') => {
+    const cleanId = (identifier || '').trim();
+
+    try {
+      // 1. Authenticate with backend TiDB database
+      const response = await authApi.login({ identifier: cleanId, password });
+      if (response && response.user) {
+        const dbUser = response.user;
+        const meta = getRoleMeta(dbUser.role);
+        const sessionUser = {
+          ...dbUser,
+          ...meta,
+          avatar: getInitials(dbUser.name),
+          loginTimestamp: new Date().toISOString()
+        };
+        setCurrentUser(sessionUser);
+        return sessionUser;
+      }
+    } catch (err) {
+      console.warn('Backend DB auth attempt:', err.message);
+      // If error is invalid credentials or suspended, rethrow so the user sees it
+      if (err.message.includes('Invalid') || err.message.includes('suspended') || err.message.includes('inactive')) {
+        throw err;
+      }
     }
 
-    // 3. Fallback: default to admin if not found but requested login
+    // 2. Fallback: match by predefined demo role if backend is not reachable
+    let matchedRole = SYSTEM_ROLES.find(
+      (r) => r.id === cleanId || r.key === cleanId || r.email.toLowerCase() === cleanId.toLowerCase()
+    );
+
     if (!matchedRole) {
       matchedRole = SYSTEM_ROLES[0];
     }
@@ -162,7 +274,7 @@ export const AuthProvider = ({ children }) => {
     return sessionUser;
   };
 
-  // Quick switch role utility (for testing / demo switcher)
+  // Switch role helper
   const switchRole = (roleId) => {
     const target = SYSTEM_ROLES.find((r) => r.id === roleId);
     if (target) {
@@ -174,6 +286,26 @@ export const AuthProvider = ({ children }) => {
       return updated;
     }
     return null;
+  };
+
+  // Create new user account (Admin feature)
+  const createUser = async (userData) => {
+    const created = await usersApi.create(userData);
+    setUsersList((prev) => [...prev, created]);
+    return created;
+  };
+
+  // Update user account
+  const updateUser = async (id, userData) => {
+    const updated = await usersApi.update(id, userData);
+    setUsersList((prev) => prev.map((u) => (u.id === id ? updated : u)));
+    return updated;
+  };
+
+  // Delete user account
+  const deleteUser = async (id) => {
+    await usersApi.delete(id);
+    setUsersList((prev) => prev.filter((u) => u.id !== id));
   };
 
   const logout = () => {
@@ -191,6 +323,12 @@ export const AuthProvider = ({ children }) => {
         currentUser,
         isAuthenticated: !!currentUser,
         systemRoles: SYSTEM_ROLES,
+        usersList,
+        isLoadingUsers,
+        fetchUsers,
+        createUser,
+        updateUser,
+        deleteUser,
         login,
         logout,
         switchRole

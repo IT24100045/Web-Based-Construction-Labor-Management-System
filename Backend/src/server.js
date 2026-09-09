@@ -8,6 +8,8 @@ const laborersRouter = require('./routes/laborers');
 const sitesRouter = require('./routes/sites');
 const attendanceRouter = require('./routes/attendance');
 const paymentsRouter = require('./routes/payments');
+const authRouter = require('./routes/auth');
+const usersRouter = require('./routes/users');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -38,6 +40,8 @@ app.get('/api/health', async (req, res) => {
 });
 
 // API Routes
+app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
 app.use('/api/laborers', laborersRouter);
 app.use('/api/sites', sitesRouter);
 app.use('/api/attendance', attendanceRouter);

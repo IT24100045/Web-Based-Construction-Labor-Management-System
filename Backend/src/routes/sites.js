@@ -50,6 +50,13 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Site name is required' });
     }
 
+    if (startDate) {
+      const today = new Date().toISOString().split('T')[0];
+      if (startDate < today) {
+        return res.status(400).json({ error: 'Commencement date cannot be in the past.' });
+      }
+    }
+
     const siteCode = code ? code.trim() : `PRJ-${Math.floor(100 + Math.random() * 900)}-${new Date().getFullYear()}`;
 
     // Generate unique ID e.g. SITE-01

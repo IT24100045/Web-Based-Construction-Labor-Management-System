@@ -26,6 +26,8 @@ const Navbar = ({ activeTab, onOpenAddLaborer, onToggleSidebar }) => {
 
   const getTabLabel = () => {
     switch (activeTab) {
+      case 'users':
+        return 'User Accounts & Security Roles';
       case 'laborers':
         return 'Labor Management & Directory';
       case 'sites':

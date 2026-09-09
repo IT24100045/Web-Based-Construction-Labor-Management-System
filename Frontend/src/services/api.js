@@ -99,3 +99,32 @@ export const paymentsApi = {
       body: JSON.stringify(data)
     }).then(handleResponse)
 };
+
+export const authApi = {
+  login: (credentials) =>
+    fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    }).then(handleResponse)
+};
+
+export const usersApi = {
+  getAll: () => fetch(`${API_BASE}/users`).then(handleResponse),
+  create: (data) =>
+    fetch(`${API_BASE}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(handleResponse),
+  update: (id, data) =>
+    fetch(`${API_BASE}/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(handleResponse),
+  delete: (id) =>
+    fetch(`${API_BASE}/users/${id}`, {
+      method: 'DELETE'
+    }).then(handleResponse)
+};

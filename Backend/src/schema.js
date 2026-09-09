@@ -70,6 +70,22 @@ async function initializeSchema() {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_payments_laborer (laborer_id),
       INDEX idx_payments_date (date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+    `CREATE TABLE IF NOT EXISTS users (
+      id VARCHAR(50) PRIMARY KEY,
+      username VARCHAR(100) NOT NULL UNIQUE,
+      email VARCHAR(100) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      role VARCHAR(50) NOT NULL,
+      title VARCHAR(255) DEFAULT '',
+      status VARCHAR(50) DEFAULT 'Active',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_user_role (role),
+      INDEX idx_user_username (username),
+      INDEX idx_user_email (email)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
   ];
 
@@ -77,7 +93,76 @@ async function initializeSchema() {
     await pool.query(q);
   }
 
-  console.log('[TiDB Cloud] All tables (sites, laborers, attendance, payments) verified successfully.');
+  // Seed default demo user accounts if they don't already exist
+  const DEMO_USERS = [
+    {
+      id: 'USR-ADMIN-01',
+      username: 'admin',
+      email: 'admin@jalenterprises.lk',
+      password: 'admin2026',
+      name: 'Eng. J.A. Liyanage',
+      role: 'admin',
+      title: 'Managing Director & System Admin',
+      status: 'Active'
+    },
+    {
+      id: 'USR-PM-01',
+      username: 'pm',
+      email: 'pm@jalenterprises.lk',
+      password: 'pm2026',
+      name: 'Sunil Fernando',
+      role: 'project_manager',
+      title: 'Senior Project Manager',
+      status: 'Active'
+    },
+    {
+      id: 'USR-SUP-01',
+      username: 'supervisor',
+      email: 'supervisor@jalenterprises.lk',
+      password: 'supervisor2026',
+      name: 'Eng. N. Samarasinghe',
+      role: 'site_supervisor',
+      title: 'Chief Site Supervisor',
+      status: 'Active'
+    },
+    {
+      id: 'USR-HR-01',
+      username: 'hr',
+      email: 'hr@jalenterprises.lk',
+      password: 'hr2026',
+      name: 'Kamal Weerasinghe',
+      role: 'hr_manager',
+      title: 'Head of Human Resources',
+      status: 'Active'
+    },
+    {
+      id: 'USR-PAY-01',
+      username: 'payroll',
+      email: 'payroll@jalenterprises.lk',
+      password: 'payroll2026',
+      name: 'Anoma Jayawardena',
+      role: 'payroll_officer',
+      title: 'Senior Payroll & Accounts Officer',
+      status: 'Active'
+    }
+  ];
+
+  for (const u of DEMO_USERS) {
+    const [existing] = await pool.query(
+      'SELECT id FROM users WHERE username = ? OR email = ? LIMIT 1',
+      [u.username, u.email]
+    );
+    if (!existing || existing.length === 0) {
+      await pool.query(
+        `INSERT INTO users (id, username, email, password, name, role, title, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [u.id, u.username, u.email, u.password, u.name, u.role, u.title, u.status]
+      );
+      console.log(`[TiDB Cloud] Seeded default user account: ${u.username} (${u.role})`);
+    }
+  }
+
+  console.log('[TiDB Cloud] All tables (sites, laborers, attendance, payments, users) verified successfully.');
 }
 
 module.exports = {
