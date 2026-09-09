@@ -18,7 +18,9 @@ import {
 } from 'lucide-react';
 import { useAuth, getRoleMeta } from '../../context/AuthContext';
 import { useLabor } from '../../context/LaborContext';
+import StatCard from '../common/StatCard';
 import CreateUserModal from './CreateUserModal';
+import ChangeRoleModal from './ChangeRoleModal';
 
 const UserManagementView = () => {
   const { currentUser, usersList, isLoadingUsers, fetchUsers, updateUser, deleteUser } = useAuth();
@@ -28,6 +30,7 @@ const UserManagementView = () => {
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [userToEditRole, setUserToEditRole] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
 
   useEffect(() => {
@@ -104,110 +107,118 @@ const UserManagementView = () => {
   };
 
   return (
-    <div className="tab-container animate-fade-in">
-      {/* View Header */}
-      <div className="view-header">
-        <div>
-          <div className="breadcrumb">Administration / Access Control</div>
-          <h2>User Accounts & Security Roles</h2>
+    <div className="page-container animate-fade-in">
+      {/* Header */}
+      <div className="page-header">
+        <div className="page-title-group">
+          <h1>
+            <ShieldCheck size={28} color="var(--amber-primary)" />
+            User Accounts & Security Roles
+          </h1>
           <p>
             Create and manage authorized staff accounts, assign operational roles, and configure system credentials for J A L Enterprises.
           </p>
         </div>
-        <div className="header-actions">
+        <div className="page-actions">
           <button
-            className="btn btn-secondary btn-sm"
+            className="btn btn-secondary"
             onClick={fetchUsers}
             disabled={isLoadingUsers}
             title="Refresh accounts from TiDB Cloud"
           >
-            <RefreshCw size={15} className={isLoadingUsers ? 'spin-icon' : ''} />
+            <RefreshCw size={16} className={isLoadingUsers ? 'spin-icon' : ''} />
             <span>Sync Accounts</span>
           </button>
           <button
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary"
             onClick={() => setIsCreateModalOpen(true)}
           >
-            <UserPlus size={16} />
+            <UserPlus size={18} />
             <span>Create New Account</span>
           </button>
         </div>
       </div>
 
-      {/* Role Distribution Summary Cards */}
-      <div className="stats-row" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-        <div className="stat-card">
-          <div className="stat-header">
-            <span className="stat-label">Total Accounts</span>
-            <Users size={18} color="var(--amber-primary)" />
-          </div>
-          <div className="stat-value">{roleCounts.all}</div>
-          <div className="stat-sub">Registered Staff</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <span className="stat-label">Administrators</span>
-            <ShieldCheck size={18} color="#a855f7" />
-          </div>
-          <div className="stat-value" style={{ color: '#a855f7' }}>{roleCounts.admin}</div>
-          <div className="stat-sub">System Control</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <span className="stat-label">Project Managers</span>
-            <Building2 size={18} color="#38bdf8" />
-          </div>
-          <div className="stat-value" style={{ color: '#38bdf8' }}>{roleCounts.project_manager}</div>
-          <div className="stat-sub">Sites & Allocation</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <span className="stat-label">Site Supervisors</span>
-            <HardHat size={18} color="var(--amber-primary)" />
-          </div>
-          <div className="stat-value" style={{ color: 'var(--amber-primary)' }}>{roleCounts.site_supervisor}</div>
-          <div className="stat-sub">Field Attendance & OT</div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <span className="stat-label">HR & Payroll</span>
-            <Receipt size={18} color="#f43f5e" />
-          </div>
-          <div className="stat-value" style={{ color: '#f43f5e' }}>{roleCounts.hr_manager + roleCounts.payroll_officer}</div>
-          <div className="stat-sub">Personnel & Wages</div>
-        </div>
+      {/* 5 Operational Role Cards */}
+      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+        <StatCard
+          icon={<ShieldCheck size={24} />}
+          label="Administrators"
+          value={roleCounts.admin}
+          subtext="Full System Control"
+          color="purple"
+        />
+        <StatCard
+          icon={<Building2 size={24} />}
+          label="Project Managers"
+          value={roleCounts.project_manager}
+          subtext="Sites & Workforce"
+          color="sky"
+        />
+        <StatCard
+          icon={<HardHat size={24} />}
+          label="Site Supervisors"
+          value={roleCounts.site_supervisor}
+          subtext="Field Attendance & OT"
+          color="amber"
+        />
+        <StatCard
+          icon={<Users size={24} />}
+          label="HR Managers"
+          value={roleCounts.hr_manager}
+          subtext="Personnel & Labor Roster"
+          color="emerald"
+        />
+        <StatCard
+          icon={<Receipt size={24} />}
+          label="Payroll Officers"
+          value={roleCounts.payroll_officer}
+          subtext="Wage Disbursal & Slips"
+          color="rose"
+        />
       </div>
 
       {/* Search & Filtering Controls */}
-      <div className="directory-controls">
-        <div className="search-box">
-          <Search size={18} className="search-icon" />
+      <div className="filter-bar">
+        <div className="search-input-wrapper">
+          <Search size={18} />
           <input
             type="text"
+            className="form-control"
             placeholder="Search by name, username, email, designation..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           {searchTerm && (
             <button
+              type="button"
               onClick={() => setSearchTerm('')}
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                fontSize: '1.2rem',
+                lineHeight: 1
+              }}
+              title="Clear search"
             >
               &times;
             </button>
           )}
         </div>
 
-        <div className="filter-group">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Filter size={16} color="var(--text-muted)" />
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="filter-select"
+            className="form-control"
+            style={{ width: 'auto', minWidth: '180px' }}
           >
             <option value="ALL">All Roles ({roleCounts.all})</option>
             <option value="admin">System Administrator ({roleCounts.admin})</option>
@@ -216,17 +227,18 @@ const UserManagementView = () => {
             <option value="hr_manager">HR Manager ({roleCounts.hr_manager})</option>
             <option value="payroll_officer">Payroll Officer ({roleCounts.payroll_officer})</option>
           </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="filter-select"
-          >
-            <option value="ALL">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Suspended">Suspended</option>
-          </select>
         </div>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="form-control"
+          style={{ width: 'auto', minWidth: '140px' }}
+        >
+          <option value="ALL">All Status</option>
+          <option value="Active">Active</option>
+          <option value="Suspended">Suspended</option>
+        </select>
       </div>
 
       {/* Users Accounts Table */}
@@ -296,7 +308,10 @@ const UserManagementView = () => {
                       </td>
 
                       <td>
-                        <span
+                        <button
+                          type="button"
+                          onClick={() => setUserToEditRole(user)}
+                          title="Click to change role"
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -307,11 +322,13 @@ const UserManagementView = () => {
                             fontWeight: 700,
                             background: meta.badgeBg,
                             color: meta.badgeColor,
-                            border: `1px solid ${meta.badgeColor}35`
+                            border: `1px solid ${meta.badgeColor}35`,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
                           }}
                         >
                           {meta.roleLabel}
-                        </span>
+                        </button>
                       </td>
 
                       <td style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
@@ -335,7 +352,17 @@ const UserManagementView = () => {
                         <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
                           <button
                             className="btn btn-secondary btn-sm"
-                            style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                            style={{ padding: '5px 10px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                            onClick={() => setUserToEditRole(user)}
+                            title="Change User Role & Permissions"
+                          >
+                            <UserCheck size={13} />
+                            <span>Change Role</span>
+                          </button>
+
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: '5px 10px', fontSize: '0.75rem' }}
                             onClick={() => handleToggleStatus(user)}
                             disabled={isCurrentAdmin}
                             title={user.status === 'Active' ? 'Suspend Account' : 'Activate Account'}
@@ -345,12 +372,12 @@ const UserManagementView = () => {
 
                           <button
                             className="btn btn-danger btn-sm"
-                            style={{ padding: '4px 8px' }}
+                            style={{ padding: '5px 8px' }}
                             onClick={() => setUserToDelete(user)}
                             disabled={isCurrentAdmin}
                             title={isCurrentAdmin ? 'Primary admin account cannot be deleted' : 'Delete Account'}
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -368,6 +395,15 @@ const UserManagementView = () => {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
       />
+
+      {/* Change Role Modal */}
+      {userToEditRole && (
+        <ChangeRoleModal
+          isOpen={!!userToEditRole}
+          user={userToEditRole}
+          onClose={() => setUserToEditRole(null)}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       {userToDelete && (

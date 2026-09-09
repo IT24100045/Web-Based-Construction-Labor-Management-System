@@ -299,6 +299,14 @@ export const AuthProvider = ({ children }) => {
   const updateUser = async (id, userData) => {
     const updated = await usersApi.update(id, userData);
     setUsersList((prev) => prev.map((u) => (u.id === id ? updated : u)));
+    if (currentUser && (currentUser.id === id || currentUser.username === updated.username)) {
+      const meta = getRoleMeta(updated.role);
+      setCurrentUser((prev) => ({
+        ...prev,
+        ...updated,
+        ...meta
+      }));
+    }
     return updated;
   };
 

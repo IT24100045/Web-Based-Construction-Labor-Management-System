@@ -69,7 +69,6 @@ function MainApp({ initialTab = 'dashboard' }) {
       <div className="main-content">
         <Navbar
           activeTab={activeTab}
-          onOpenAddLaborer={() => setIsAddLaborerOpen(true)}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
         />
 

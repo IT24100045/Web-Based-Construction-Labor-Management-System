@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, Calendar, Clock, UserPlus, LogOut, ChevronDown, ShieldCheck, HardHat, Building2, Users, Receipt, RefreshCw } from 'lucide-react';
+import { Menu, Calendar, Clock, LogOut, ChevronDown, ShieldCheck, HardHat, Building2, Users, Receipt } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-const Navbar = ({ activeTab, onOpenAddLaborer, onToggleSidebar }) => {
+const Navbar = ({ activeTab, onToggleSidebar }) => {
   const { currentUser, systemRoles, switchRole, logout } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
@@ -92,11 +92,6 @@ const Navbar = ({ activeTab, onOpenAddLaborer, onToggleSidebar }) => {
       </div>
 
       <div className="nav-right" style={{ gap: '12px' }}>
-        <div className="system-status-indicator" title="Live connection to TiDB Cloud (JAL)">
-          <div className="pulse-dot" />
-          <span>TiDB Cloud Online</span>
-        </div>
-
         <div className="date-clock-badge">
           <Calendar size={14} color="var(--amber-primary)" />
           <span>{formattedDate}</span>
@@ -104,16 +99,6 @@ const Navbar = ({ activeTab, onOpenAddLaborer, onToggleSidebar }) => {
           <Clock size={14} color="var(--sky)" />
           <span>{formattedTime}</span>
         </div>
-
-        {/* Quick Add Laborer Button */}
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={onOpenAddLaborer}
-          title="Quick add new laborer"
-        >
-          <UserPlus size={16} />
-          <span>Add Laborer</span>
-        </button>
 
         {/* Active Role Profile Chip with Switcher Dropdown */}
         <div style={{ position: 'relative' }} ref={dropdownRef}>
