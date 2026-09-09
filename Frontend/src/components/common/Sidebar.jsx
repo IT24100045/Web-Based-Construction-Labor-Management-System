@@ -1,0 +1,123 @@
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  CalendarCheck,
+  Receipt,
+  HardHat,
+  RefreshCw
+} from 'lucide-react';
+import { useLabor } from '../../context/LaborContext';
+
+const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
+  const { laborers, sites, refreshAllData, isLoading } = useLabor();
+
+  const navItems = [
+    {
+      id: 'dashboard',
+      label: 'Overview Dashboard',
+      icon: <LayoutDashboard size={19} />,
+      badge: null
+    },
+    {
+      id: 'laborers',
+      label: 'Labor Directory',
+      icon: <Users size={19} />,
+      badge: laborers.length
+    },
+    {
+      id: 'sites',
+      label: 'Sites & Allocation',
+      icon: <Building2 size={19} />,
+      badge: sites.length
+    },
+    {
+      id: 'attendance',
+      label: 'Attendance & Overtime',
+      icon: <CalendarCheck size={19} />,
+      badge: 'Daily'
+    },
+    {
+      id: 'wages',
+      label: 'Wages & Payments',
+      icon: <Receipt size={19} />,
+      badge: 'Payroll'
+    }
+  ];
+
+  const handleNavClick = (tabId) => {
+    setActiveTab(tabId);
+    if (window.innerWidth <= 1024) {
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <>
+      {isOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
+          <div className="brand-icon">
+            <HardHat size={24} />
+          </div>
+          <div className="brand-info">
+            <h2>BUILDFORCE</h2>
+            <span>Labor Management</span>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav">
+          <div className="nav-section-title">Operations</div>
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => handleNavClick(item.id)}
+            >
+              <div className="nav-item-content">
+                {item.icon}
+                <span>{item.label}</span>
+              </div>
+              {item.badge && (
+                <span className="badge badge-amber" style={{ fontSize: '0.7rem' }}>
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          ))}
+
+          <div className="nav-section-title" style={{ marginTop: '16px' }}>Database</div>
+          <button
+            className="nav-item"
+            onClick={refreshAllData}
+            title="Sync live records from TiDB Cloud database"
+            disabled={isLoading}
+          >
+            <div className="nav-item-content">
+              <RefreshCw size={17} className={isLoading ? 'spin-icon' : ''} />
+              <span style={{ fontSize: '0.85rem' }}>{isLoading ? 'Syncing TiDB...' : 'Sync Cloud DB'}</span>
+            </div>
+          </button>
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="supervisor-badge">
+            <div className="supervisor-avatar">NS</div>
+            <div className="supervisor-info">
+              <span className="supervisor-name">Eng. N. Samarasinghe</span>
+              <span className="supervisor-role">Chief Site Supervisor</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </>
+  );
+};
+
+export default Sidebar;
