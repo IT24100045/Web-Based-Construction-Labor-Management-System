@@ -7,7 +7,6 @@ import {
   Receipt,
   ArrowUpRight,
   HardHat,
-  TrendingUp,
   AlertCircle,
   Clock,
   CheckCircle2,
@@ -211,58 +210,6 @@ const OverviewDashboard = ({ onNavigate, onOpenAddLaborer, onOpenAddSite }) => {
                 </div>
               ))
             )}
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Launchpad */}
-      <div className="card" style={{ background: 'linear-gradient(135deg, var(--bg-card), var(--bg-secondary))' }}>
-        <h3 className="card-title" style={{ marginBottom: '16px' }}>
-          <TrendingUp size={18} color="var(--amber-primary)" /> Sprint 1 Operations Launchpad
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-          <div
-            onClick={() => onNavigate('laborers')}
-            style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all var(--transition-fast)' }}
-          >
-            <div style={{ color: 'var(--amber-primary)', marginBottom: '8px' }}><Users size={22} /></div>
-            <strong style={{ fontSize: '0.95rem', color: '#fff' }}>Labor Directory</strong>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              Search {totalLaborers} profiles, edit info, and verify NICs.
-            </p>
-          </div>
-
-          <div
-            onClick={() => onNavigate('sites')}
-            style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all var(--transition-fast)' }}
-          >
-            <div style={{ color: 'var(--sky)', marginBottom: '8px' }}><Building2 size={22} /></div>
-            <strong style={{ fontSize: '0.95rem', color: '#fff' }}>Site Allocation</strong>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              Allocate crews across {sites.length} construction sites.
-            </p>
-          </div>
-
-          <div
-            onClick={() => onNavigate('attendance')}
-            style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all var(--transition-fast)' }}
-          >
-            <div style={{ color: 'var(--emerald)', marginBottom: '8px' }}><CalendarCheck size={22} /></div>
-            <strong style={{ fontSize: '0.95rem', color: '#fff' }}>Daily Attendance</strong>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              Mark on-site muster rolls and capture overtime hours.
-            </p>
-          </div>
-
-          <div
-            onClick={() => onNavigate('wages')}
-            style={{ padding: '16px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all var(--transition-fast)' }}
-          >
-            <div style={{ color: 'var(--purple)', marginBottom: '8px' }}><Receipt size={22} /></div>
-            <strong style={{ fontSize: '0.95rem', color: '#fff' }}>Wages & Payroll</strong>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              Calculate regular & OT earnings, disburse payments.
-            </p>
           </div>
         </div>
       </div>

@@ -10,13 +10,16 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useLabor } from '../../context/LaborContext';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, getRoleMeta } from '../../context/AuthContext';
 
 const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
   const { laborers, sites, refreshAllData, isLoading } = useLabor();
   const { currentUser, logout, usersList } = useAuth();
 
-  const navItems = [
+  const roleMeta = getRoleMeta(currentUser?.role);
+  const allowedTabs = currentUser?.allowedTabs || roleMeta?.allowedTabs;
+
+  const rawNavItems = [
     {
       id: 'dashboard',
       label: 'Overview Dashboard',
@@ -58,6 +61,13 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
       badge: 'Payroll'
     }
   ];
+
+  const navItems = rawNavItems.filter((item) => {
+    if (allowedTabs && Array.isArray(allowedTabs)) {
+      return allowedTabs.includes(item.id);
+    }
+    return true;
+  });
 
   const handleNavClick = (tabId) => {
     setActiveTab(tabId);

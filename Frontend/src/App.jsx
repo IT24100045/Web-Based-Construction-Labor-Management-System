@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LaborProvider } from './context/LaborContext';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth, getRoleMeta } from './context/AuthContext';
 import Sidebar from './components/common/Sidebar';
 import Navbar from './components/common/Navbar';
 import Toast from './components/common/Toast';
@@ -25,16 +25,23 @@ const getTabFromHash = () => {
   return APP_TABS.includes(hash) ? hash : null;
 };
 
-function MainApp({ activeTab: controlledTab, onTabChange, onReturnToHome }) {
-  const [internalTab, setInternalTab] = useState(controlledTab || 'dashboard');
-  const activeTab = controlledTab !== undefined ? controlledTab : internalTab;
+function MainApp({ activeTab: controlledTab, onTabChange }) {
+  const { currentUser } = useAuth();
+  const roleMeta = getRoleMeta(currentUser?.role);
+  const allowedTabs = currentUser?.allowedTabs || roleMeta?.allowedTabs;
+
+  // Derive effective activeTab during render without synchronous setState in effects
+  const isAllowed = !allowedTabs || !Array.isArray(allowedTabs) || allowedTabs.includes(controlledTab);
+  const activeTab = isAllowed
+    ? (controlledTab || 'dashboard')
+    : (currentUser?.defaultTab || roleMeta?.defaultTab || allowedTabs[0] || 'laborers');
+
   const setActiveTab = (tab) => {
     if (onTabChange) {
       onTabChange(tab);
-    } else {
-      setInternalTab(tab);
     }
   };
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Global quick modals
@@ -149,15 +156,26 @@ function AppContent() {
 
   const [activeTab, setActiveTab] = useState(() => {
     const tabFromHash = getTabFromHash();
+    const roleMeta = getRoleMeta(currentUser?.role);
+    const allowed = currentUser?.allowedTabs || roleMeta?.allowedTabs;
+    if (tabFromHash && allowed && !allowed.includes(tabFromHash)) {
+      return currentUser?.defaultTab || roleMeta?.defaultTab || allowed[0];
+    }
     if (tabFromHash) return tabFromHash;
-    return currentUser?.defaultTab || 'dashboard';
+    return currentUser?.defaultTab || roleMeta?.defaultTab || 'dashboard';
   });
 
   // Listen for browser Back/Forward navigation or hash changes
-  React.useEffect(() => {
+  useEffect(() => {
     const handleHashChange = () => {
-      const tab = getTabFromHash();
+      let tab = getTabFromHash();
       if (tab && isAuthenticated) {
+        const roleMeta = getRoleMeta(currentUser?.role);
+        const allowed = currentUser?.allowedTabs || roleMeta?.allowedTabs;
+        if (allowed && !allowed.includes(tab)) {
+          tab = currentUser?.defaultTab || roleMeta?.defaultTab || allowed[0];
+          window.location.hash = `#${tab}`;
+        }
         setActiveTab(tab);
         setCurrentView('app');
       } else if (!tab) {
@@ -168,35 +186,25 @@ function AppContent() {
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [isAuthenticated]);
-
-  // If user logs out while in MainApp, smoothly return to HomePage
-  React.useEffect(() => {
-    if (!isAuthenticated && currentView === 'app') {
-      setCurrentView('home');
-      if (window.location.hash && APP_TABS.includes(window.location.hash.replace(/^#\/?/, ''))) {
-        window.location.hash = '';
-      }
-    }
-  }, [isAuthenticated, currentView]);
+  }, [isAuthenticated, currentUser]);
 
   const navigateToApp = (tab) => {
-    const targetTab = tab || currentUser?.defaultTab || activeTab || 'dashboard';
+    const roleMeta = getRoleMeta(currentUser?.role);
+    const allowed = currentUser?.allowedTabs || roleMeta?.allowedTabs;
+    let targetTab = tab || currentUser?.defaultTab || roleMeta?.defaultTab || activeTab || 'dashboard';
+    if (allowed && !allowed.includes(targetTab)) {
+      targetTab = currentUser?.defaultTab || roleMeta?.defaultTab || allowed[0];
+    }
     setActiveTab(targetTab);
     setCurrentView('app');
     window.location.hash = `#${targetTab}`;
   };
 
-  const navigateToHome = () => {
-    setCurrentView('home');
-    const tab = getTabFromHash();
-    if (tab) {
-      window.location.hash = '';
-    }
-  };
+  // Derive effective view: unauthenticated sessions always render the home page
+  const isAppView = isAuthenticated && currentView === 'app';
 
-  // If on HomePage (index page)
-  if (currentView === 'home') {
+  // If on HomePage (index page) or not authenticated
+  if (!isAppView) {
     return (
       <>
         <HomePage
@@ -217,7 +225,6 @@ function AppContent() {
         setActiveTab(tab);
         window.location.hash = `#${tab}`;
       }}
-      onReturnToHome={navigateToHome}
     />
   );
 }

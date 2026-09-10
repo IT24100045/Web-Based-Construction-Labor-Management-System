@@ -35,7 +35,7 @@ export const SYSTEM_ROLES = [
     badgeColor: '#38bdf8',
     badgeBg: 'rgba(56, 189, 248, 0.15)',
     defaultTab: 'sites',
-    allowedTabs: ['dashboard', 'sites', 'laborers', 'wages'],
+    allowedTabs: ['laborers', 'sites', 'attendance'],
     responsibilities: [
       'Register and monitor construction project sites',
       'Allocate skilled trades and general workforce to sites',
@@ -55,7 +55,7 @@ export const SYSTEM_ROLES = [
     badgeColor: '#f59e0b',
     badgeBg: 'rgba(245, 158, 11, 0.15)',
     defaultTab: 'attendance',
-    allowedTabs: ['dashboard', 'attendance', 'sites', 'laborers'],
+    allowedTabs: ['laborers', 'sites', 'attendance', 'wages'],
     responsibilities: [
       'Log daily muster roll and worker check-ins',
       'Record regular and overtime (OT) hours with justification',
@@ -75,7 +75,7 @@ export const SYSTEM_ROLES = [
     badgeColor: '#10b981',
     badgeBg: 'rgba(16, 185, 129, 0.15)',
     defaultTab: 'laborers',
-    allowedTabs: ['dashboard', 'laborers', 'sites'],
+    allowedTabs: ['laborers', 'attendance', 'wages'],
     responsibilities: [
       'Onboard and register new construction laborers',
       'Maintain verified NIC, contact, and emergency records',
@@ -95,7 +95,7 @@ export const SYSTEM_ROLES = [
     badgeColor: '#f43f5e',
     badgeBg: 'rgba(244, 63, 94, 0.15)',
     defaultTab: 'wages',
-    allowedTabs: ['dashboard', 'wages', 'laborers'],
+    allowedTabs: ['attendance', 'wages'],
     responsibilities: [
       'Calculate gross wages with automated 1.5x overtime rates',
       'Process payment disbursements and log payment methods',
@@ -122,7 +122,7 @@ export const getRoleMeta = (role) => {
         badgeColor: '#38bdf8',
         badgeBg: 'rgba(56, 189, 248, 0.15)',
         defaultTab: 'sites',
-        allowedTabs: ['dashboard', 'sites', 'laborers', 'wages']
+        allowedTabs: ['laborers', 'sites', 'attendance']
       };
     case 'site_supervisor':
       return {
@@ -130,7 +130,7 @@ export const getRoleMeta = (role) => {
         badgeColor: '#f59e0b',
         badgeBg: 'rgba(245, 158, 11, 0.15)',
         defaultTab: 'attendance',
-        allowedTabs: ['dashboard', 'attendance', 'sites', 'laborers']
+        allowedTabs: ['laborers', 'sites', 'attendance', 'wages']
       };
     case 'hr_manager':
       return {
@@ -138,7 +138,7 @@ export const getRoleMeta = (role) => {
         badgeColor: '#10b981',
         badgeBg: 'rgba(16, 185, 129, 0.15)',
         defaultTab: 'laborers',
-        allowedTabs: ['dashboard', 'laborers', 'sites']
+        allowedTabs: ['laborers', 'attendance', 'wages']
       };
     case 'payroll_officer':
       return {
@@ -146,7 +146,7 @@ export const getRoleMeta = (role) => {
         badgeColor: '#f43f5e',
         badgeBg: 'rgba(244, 63, 94, 0.15)',
         defaultTab: 'wages',
-        allowedTabs: ['dashboard', 'wages', 'laborers']
+        allowedTabs: ['attendance', 'wages']
       };
     default:
       return {
@@ -175,7 +175,17 @@ export const AuthProvider = ({ children }) => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.role) {
+          const freshMeta = getRoleMeta(parsed.role);
+          return {
+            ...parsed,
+            ...freshMeta,
+            allowedTabs: freshMeta.allowedTabs,
+            defaultTab: freshMeta.defaultTab
+          };
+        }
+        return parsed;
       }
     } catch (e) {
       console.error('Error restoring auth state from localStorage:', e);
@@ -322,6 +332,9 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem(STORAGE_KEY);
     } catch {
       // ignore
+    }
+    if (typeof window !== 'undefined' && window.location.hash) {
+      window.location.hash = '';
     }
   };
 
