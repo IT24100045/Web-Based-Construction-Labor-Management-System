@@ -3,7 +3,7 @@ import { Menu, Calendar, Clock, LogOut, ChevronDown, ShieldCheck, HardHat, Build
 import { useAuth } from '../../context/AuthContext';
 
 const Navbar = ({ activeTab, onToggleSidebar, onReturnToHome }) => {
-  const { currentUser, systemRoles, switchRole, logout } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -119,7 +119,7 @@ const Navbar = ({ activeTab, onToggleSidebar, onReturnToHome }) => {
               background: 'rgba(19, 31, 55, 0.85)',
               borderColor: currentUser?.badgeColor || 'var(--border-medium)'
             }}
-            title="Active user & role switcher"
+            title="Active user profile"
           >
             <div
               style={{
@@ -155,76 +155,79 @@ const Navbar = ({ activeTab, onToggleSidebar, onReturnToHome }) => {
                 position: 'absolute',
                 top: 'calc(100% + 8px)',
                 right: 0,
-                width: '260px',
+                width: '270px',
                 background: '#0d1527',
                 border: '1px solid var(--border-medium)',
                 borderRadius: 'var(--radius-md)',
                 boxShadow: '0 10px 30px rgba(0,0,0,0.7)',
-                padding: '8px',
+                padding: '12px',
                 zIndex: 1000
               }}
             >
-              <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '6px' }}>
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Signed in as
-                </div>
-                <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>
-                  {currentUser?.name}
-                </div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
-                  {currentUser?.email}
-                </div>
-              </div>
-
-              <div style={{ padding: '4px 10px', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Switch Role / Persona:
-              </div>
-
-              {systemRoles.map((role) => (
-                <button
-                  key={role.id}
-                  onClick={() => {
-                    switchRole(role.id);
-                    setShowRoleDropdown(false);
-                  }}
+              {/* Logged in User Profile Info */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-subtle)' }}>
+                <div
                   style={{
-                    width: '100%',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '8px',
+                    background: currentUser?.badgeBg || 'rgba(245, 158, 11, 0.2)',
+                    color: currentUser?.badgeColor || 'var(--amber-primary)',
+                    border: `1px solid ${currentUser?.badgeColor || 'var(--amber-primary)'}50`,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '8px',
-                    padding: '7px 10px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: 'none',
-                    background: currentUser?.id === role.id ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
-                    color: currentUser?.id === role.id ? '#fff' : 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontSize: '0.78rem',
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (currentUser?.id !== role.id) e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (currentUser?.id !== role.id) e.currentTarget.style.background = 'transparent';
+                    justifyContent: 'center',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    fontFamily: 'var(--font-mono)'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ color: role.badgeColor }}>
-                      {getRoleIcon(role.id, 14)}
-                    </span>
-                    <span>{role.roleLabel}</span>
+                  {currentUser?.avatar || 'JL'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {currentUser?.name || 'Authorized User'}
                   </div>
-                  {currentUser?.id === role.id && (
-                    <span style={{ fontSize: '0.68rem', color: 'var(--amber-primary)', fontWeight: 700 }}>
-                      Active
-                    </span>
-                  )}
-                </button>
-              ))}
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {currentUser?.email}
+                  </div>
+                </div>
+              </div>
 
-              <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '6px', paddingTop: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {/* User Designation & Role Details */}
+              <div style={{ padding: '10px 0', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Role:</span>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      color: currentUser?.badgeColor || 'var(--amber-primary)',
+                      background: currentUser?.badgeBg || 'rgba(245, 158, 11, 0.15)',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--radius-full)',
+                      border: `1px solid ${currentUser?.badgeColor || 'var(--amber-primary)'}30`
+                    }}
+                  >
+                    {getRoleIcon(currentUser?.role || currentUser?.id, 12)}
+                    <span>{currentUser?.roleLabel || 'Officer'}</span>
+                  </span>
+                </div>
+                {currentUser?.title && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Title:</span>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-primary)', textAlign: 'right', fontWeight: 500 }}>
+                      {currentUser?.title}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation & Logout Actions */}
+              <div style={{ paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {onReturnToHome && (
                   <button
                     onClick={() => {
@@ -243,7 +246,8 @@ const Navbar = ({ activeTab, onToggleSidebar, onReturnToHome }) => {
                       color: 'var(--amber-primary)',
                       cursor: 'pointer',
                       fontSize: '0.78rem',
-                      fontWeight: 600
+                      fontWeight: 600,
+                      transition: 'background 0.15s ease'
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -269,7 +273,8 @@ const Navbar = ({ activeTab, onToggleSidebar, onReturnToHome }) => {
                     color: 'var(--rose)',
                     cursor: 'pointer',
                     fontSize: '0.78rem',
-                    fontWeight: 600
+                    fontWeight: 600,
+                    transition: 'background 0.15s ease'
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(244, 63, 94, 0.1)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
