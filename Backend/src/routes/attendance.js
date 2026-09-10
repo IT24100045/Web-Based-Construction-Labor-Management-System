@@ -159,20 +159,44 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Attendance record not found' });
     }
 
+    const validStatuses = ['Present', 'Half-Day', 'Absent', 'Leave'];
+    const effStatus = status !== undefined ? status : existing.status;
+    if (!validStatuses.includes(effStatus)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    }
+
+    let reg = regularHours !== undefined ? parseFloat(regularHours) : parseFloat(existing.regular_hours);
+    let ot = overtimeHours !== undefined ? parseFloat(overtimeHours) : parseFloat(existing.overtime_hours);
+
+    if (effStatus === 'Absent' || effStatus === 'Leave') {
+      reg = 0;
+      ot = 0;
+    } else {
+      if (isNaN(reg) || reg < 0 || reg > 16) {
+        return res.status(400).json({ error: 'Regular hours must be between 0 and 16' });
+      }
+      if (isNaN(ot) || ot < 0 || ot > 12) {
+        return res.status(400).json({ error: 'Overtime hours must be between 0 and 12' });
+      }
+      if (reg + ot > 18) {
+        return res.status(400).json({ error: 'Combined daily shift cannot exceed 18 hours' });
+      }
+    }
+
     await query(`
       UPDATE attendance SET
-        status = COALESCE(?, status),
-        regular_hours = COALESCE(?, regular_hours),
-        overtime_hours = COALESCE(?, overtime_hours),
+        status = ?,
+        regular_hours = ?,
+        overtime_hours = ?,
         ot_reason = COALESCE(?, ot_reason),
         supervisor_notes = COALESCE(?, supervisor_notes)
       WHERE id = ?
     `, [
-      status !== undefined ? status : null,
-      regularHours !== undefined ? parseFloat(regularHours) : null,
-      overtimeHours !== undefined ? parseFloat(overtimeHours) : null,
-      otReason !== undefined ? otReason : null,
-      supervisorNotes !== undefined ? supervisorNotes : null,
+      effStatus,
+      reg,
+      ot,
+      otReason !== undefined ? (otReason || '').trim() : null,
+      supervisorNotes !== undefined ? (supervisorNotes || '').trim() : null,
       id
     ]);
 

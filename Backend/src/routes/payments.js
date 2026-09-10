@@ -53,6 +53,22 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Laborer, Amount, Reference, and Authorizer are required' });
     }
 
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ error: 'Payment amount must be a positive number greater than 0' });
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (date > todayStr) {
+      return res.status(400).json({ error: 'Payment disbursement date cannot be in the future' });
+    }
+
+    // Verify laborer exists
+    const [laborer] = await query('SELECT id FROM laborers WHERE id = ? LIMIT 1', [laborerId]);
+    if (!laborer) {
+      return res.status(404).json({ error: 'Selected laborer profile not found' });
+    }
+
     // Generate unique ID e.g. PAY-2026-001
     const year = new Date().getFullYear();
     const [countResult] = await query('SELECT COUNT(*) as cnt FROM payments');
@@ -65,12 +81,12 @@ router.post('/', async (req, res) => {
     `, [
       newId,
       laborerId,
-      parseFloat(amount) || 0.00,
+      numAmount,
       date,
       method,
-      reference,
-      approvedBy,
-      notes
+      reference.trim(),
+      approvedBy.trim(),
+      (notes || '').trim()
     ]);
 
     const [created] = await query(`

@@ -1,0 +1,86 @@
+# Comprehensive Validations Across All Input and Edit Modals
+
+All input (creation) and edit modals across the entire application—along with their corresponding backend API endpoints—have been enhanced with real-time validation, duplicate detection, boundary constraints, visual cues (`is-invalid` / `is-valid`), loading states, and async submission error handling.
+
+---
+
+## Modals Enhanced & Key Validations
+
+### 1. Sites Module
+- **[AddSiteModal.jsx](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Frontend/src/components/sites/AddSiteModal.jsx)**
+  - **Site Name**: Required, 3–100 characters, uniqueness check against all existing sites.
+  - **Project Code**: Format check (`3-30` chars, alphanumeric/hyphen/slash), uniqueness check if manually entered (or auto-generates).
+  - **Location & Client**: Required, minimum character boundaries.
+  - **Dates**: Commencement date required; completion date must be on or after commencement date.
+  - **Budget**: Must be a positive number greater than 0; upper ceiling capped at Rs. 100 Billion.
+  - **UX**: Asynchronous `isSubmitting` state with loading spinner, disabled inputs/buttons, error banner displaying backend rejection reasons without losing form inputs.
+- **[EditSiteModal.jsx](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Frontend/src/components/sites/EditSiteModal.jsx)**
+  - Full inline error message displays with `<AlertCircle />` added for all fields (`name`, `location`, `client`, `startDate`, `endDate`, `budget`, `manager`).
+  - Duplicate site name validation against other sites (`id !== site.id`).
+  - Budget & date range boundary enforcement.
+  - Asynchronous submission handling and server error banner.
+- **[SiteAllocationModal.jsx](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Frontend/src/components/sites/SiteAllocationModal.jsx)**
+  - Displays count of reallocated workers when moving workers from another active site.
+  - Asynchronous saving state (`isSaving` with spinner) and error alert banner.
+- **[Backend/src/routes/sites.js](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Backend/src/routes/sites.js)**
+  - Added backend checks for site name length and uniqueness on `POST /` and `PUT /:id`.
+  - Added date consistency checks (`endDate >= startDate`) and non-negative budget enforcement.
+
+---
+
+### 2. Wages Module
+- **[RecordPaymentModal.jsx](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Frontend/src/components/wages/RecordPaymentModal.jsx)**
+  - **Payment Amount**: Must be > 0.00; maximum single transaction threshold (Rs. 10,000,000). Added visual notice when payment exceeds outstanding due balance.
+  - **Disbursement Date**: Required; capped at today's date (`max={todayStr}` and validated against future dates).
+  - **Reference**: Required, minimum 3 characters.
+  - **Authorized By**: Required, minimum 3 characters.
+  - **UX**: Live validation on change and blur, added missing error display for date input, asynchronous submission handling with server error banner.
+- **[Backend/src/routes/payments.js](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Backend/src/routes/payments.js)**
+  - Validates `amount > 0` and non-future disbursement dates.
+  - Verifies selected `laborerId` exists before inserting payment record.
+
+---
+
+### 3. Attendance Module
+- **[EditAttendanceModal.jsx](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Frontend/src/components/attendance/EditAttendanceModal.jsx)**
+  - **Status Consistency**:
+    - If status is `Absent` or `Leave`, regular hours and overtime hours must be 0.
+    - If status is `Half-Day`, regular hours must be between 0.5 and 6.0 hrs.
+    - If status is `Present`, regular hours must be between 1.0 and 12.0 hrs.
+  - **Overtime Limits**: Overtime capped at 8.0 hrs; combined daily shift cannot exceed 16 hours.
+  - **Overtime Justification**: Overtime task/reason is mandatory whenever overtime hours > 0.
+  - **UX**: Live validation on change/blur, asynchronous `isSubmitting` state with spinner and server error banner.
+- **[Backend/src/routes/attendance.js](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Backend/src/routes/attendance.js)**
+  - Validates status enum, enforces zero hours for absent/leave, caps regular hours (0–16) and overtime hours (0–12), and caps combined shift at 18 hours.
+
+---
+
+### 4. Users Module
+- **[CreateUserModal.jsx](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Frontend/src/components/users/CreateUserModal.jsx)**
+  - **Username**: Alphanumeric + hyphen/dot, 3–30 characters, real-time client-side duplicate check against `usersList`.
+  - **Email**: RFC email format check, real-time duplicate check against `usersList`.
+  - **Password**: Minimum 6 characters with both letters and numbers required.
+  - **UX**: Live validation feedback (`is-valid` / `is-invalid`), spinner on submission, server error banner retaining user input.
+- **[ChangeRoleModal.jsx](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Frontend/src/components/users/ChangeRoleModal.jsx)**
+  - Added designation title length validation (max 80 chars).
+  - Added loader icon on button during role save.
+- **[Backend/src/routes/users.js](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Backend/src/routes/users.js)**
+  - Updated password complexity requirement to minimum 6 characters with letters and numbers on user creation and password changes.
+
+---
+
+## Verification Results
+
+1. **Frontend Production Build**:
+   ```
+   vite v7.3.6 building client environment for production...
+   ✓ 1892 modules transformed.
+   ✓ built in 2.52s
+   ```
+   Compiled with 0 errors.
+
+2. **Backend API Validation Tests**:
+   - `POST /api/sites` with short name -> `400 Site name must be at least 3 characters`
+   - `POST /api/payments` with negative amount -> `400 Payment amount must be a positive number greater than 0`
+   - `POST /api/payments` with future date -> `400 Payment disbursement date cannot be in the future`
+   - `POST /api/users` with weak password -> `400 Password must be at least 6 characters`

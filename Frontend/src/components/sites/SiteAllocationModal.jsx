@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import Modal from '../common/Modal';
 import { useLabor } from '../../context/LaborContext';
-import { CheckSquare, Square, HardHat } from 'lucide-react';
+import { CheckSquare, Square, HardHat, AlertCircle, Loader2 } from 'lucide-react';
 
 const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborersToSite }) => {
   const [selectedLaborerIds, setSelectedLaborerIds] = useState(() =>
     laborers.filter((l) => l.assignedSiteId === site.id).map((l) => l.id)
   );
   const [searchFilter, setSearchFilter] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const toggleLaborer = (id) => {
+    if (isSaving) return;
     setSelectedLaborerIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
@@ -18,26 +21,60 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
   const filteredLaborers = laborers.filter((l) =>
     l.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
     l.role.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    l.nic.toLowerCase().includes(searchFilter.toLowerCase())
+    (l.nic && l.nic.toLowerCase().includes(searchFilter.toLowerCase()))
   );
 
   const handleSelectAll = () => {
+    if (isSaving) return;
     const allMatching = filteredLaborers.map((l) => l.id);
     const combined = Array.from(new Set([...selectedLaborerIds, ...allMatching]));
     setSelectedLaborerIds(combined);
   };
 
   const handleDeselectAll = () => {
+    if (isSaving) return;
     setSelectedLaborerIds([]);
   };
 
-  const handleSave = () => {
-    allocateLaborersToSite(site.id, selectedLaborerIds);
-    onClose();
+  const reallocatedCount = laborers.filter(
+    (l) => selectedLaborerIds.includes(l.id) && l.assignedSiteId && l.assignedSiteId !== site.id
+  ).length;
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError('');
+    try {
+      await allocateLaborersToSite(site.id, selectedLaborerIds);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to save workforce allocations. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <>
+      {error && (
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'rgba(244, 63, 94, 0.15)',
+            border: '1px solid var(--rose)',
+            color: '#fda4af',
+            fontSize: '0.84rem',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <AlertCircle size={16} style={{ flexShrink: 0 }} />
+          <span>{error}</span>
+        </div>
+      )}
+
       <div style={{ marginBottom: '16px', background: 'var(--bg-card-alt)', padding: '14px 18px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontSize: '0.78rem', color: 'var(--amber-primary)', fontFamily: 'var(--font-mono)' }}>{site.code}</div>
@@ -48,7 +85,9 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
           <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--amber-light)' }}>
             {selectedLaborerIds.length} Workers
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Assigned Deployment</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {reallocatedCount > 0 ? `(${reallocatedCount} moved from other sites)` : 'Assigned Deployment'}
+          </div>
         </div>
       </div>
 
@@ -58,14 +97,15 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
           placeholder="Filter workers by name, role, or NIC..."
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
+          disabled={isSaving}
           className="form-control"
           style={{ maxWidth: '320px' }}
         />
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button type="button" className="btn btn-outline btn-sm" onClick={handleSelectAll}>
+          <button type="button" className="btn btn-outline btn-sm" onClick={handleSelectAll} disabled={isSaving}>
             Select All
           </button>
-          <button type="button" className="btn btn-outline btn-sm" onClick={handleDeselectAll}>
+          <button type="button" className="btn btn-outline btn-sm" onClick={handleDeselectAll} disabled={isSaving}>
             Clear Selection
           </button>
         </div>
@@ -92,8 +132,9 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
                   padding: '12px 16px',
                   borderBottom: '1px solid var(--border-subtle)',
                   background: isSelected ? 'rgba(245, 158, 11, 0.08)' : 'transparent',
-                  cursor: 'pointer',
-                  transition: 'background var(--transition-fast)'
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'background var(--transition-fast)',
+                  opacity: isSaving ? 0.7 : 1
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -128,12 +169,21 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
       </div>
 
       <div className="modal-footer" style={{ margin: '16px -24px -24px -24px' }}>
-        <button type="button" className="btn btn-outline" onClick={onClose}>
+        <button type="button" className="btn btn-outline" onClick={onClose} disabled={isSaving}>
           Cancel
         </button>
-        <button type="button" className="btn btn-primary" onClick={handleSave}>
-          <HardHat size={18} />
-          Save Allocation ({selectedLaborerIds.length} Workers)
+        <button type="button" className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
+          {isSaving ? (
+            <>
+              <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+              Saving Allocation...
+            </>
+          ) : (
+            <>
+              <HardHat size={18} />
+              Save Allocation ({selectedLaborerIds.length} Workers)
+            </>
+          )}
         </button>
       </div>
     </>

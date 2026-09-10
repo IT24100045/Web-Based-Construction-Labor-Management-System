@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import Modal from '../common/Modal';
 import { useLabor } from '../../context/LaborContext';
-import { DollarSign, AlertCircle } from 'lucide-react';
+import { DollarSign, AlertCircle, Info, Loader2 } from 'lucide-react';
+
+const getTodayDateString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const RecordPaymentForm = ({
   selectedLaborerId,
@@ -10,9 +18,11 @@ const RecordPaymentForm = ({
   recordPayment,
   onSuccessPayment
 }) => {
+  const todayStr = getTodayDateString();
+
   const [form, setForm] = useState(() => ({
     amount: currentLaborerWage && currentLaborerWage.balanceDue > 0 ? currentLaborerWage.balanceDue.toFixed(2) : '0.00',
-    date: new Date().toISOString().split('T')[0],
+    date: todayStr,
     method: 'Bank Transfer',
     reference: `TXN-${Date.now().toString().slice(-6)}`,
     approvedBy: 'Eng. Nihal Samarasinghe (Chief Supervisor)',
@@ -21,23 +31,41 @@ const RecordPaymentForm = ({
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState('');
 
   const validateField = (field, value) => {
     let err = '';
+    const trimmed = (value || '').trim();
+
     switch (field) {
       case 'amount':
         if (!value || isNaN(value) || parseFloat(value) <= 0) {
           err = 'Payment amount must be greater than Rs. 0.00.';
+        } else if (parseFloat(value) > 10000000) {
+          err = 'Payment amount exceeds maximum transaction threshold (Rs. 10,000,000).';
         }
         break;
       case 'date':
-        if (!value) err = 'Payment date is required.';
+        if (!value) {
+          err = 'Payment disbursement date is required.';
+        } else if (value > todayStr) {
+          err = 'Disbursement date cannot be scheduled in the future.';
+        }
         break;
       case 'reference':
-        if (!value.trim()) err = 'Transaction reference or voucher ID is required.';
+        if (!trimmed) {
+          err = 'Transaction reference or receipt voucher ID is required.';
+        } else if (trimmed.length < 3) {
+          err = 'Reference must be at least 3 characters.';
+        }
         break;
       case 'approvedBy':
-        if (!value.trim()) err = 'Authorizing official name required.';
+        if (!trimmed) {
+          err = 'Authorizing official or finance officer name is required.';
+        } else if (trimmed.length < 3) {
+          err = 'Authorizer name must be at least 3 characters.';
+        }
         break;
       default:
         break;
@@ -48,6 +76,8 @@ const RecordPaymentForm = ({
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (serverError) setServerError('');
+
     if (touched[name]) {
       setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
     }
@@ -61,14 +91,18 @@ const RecordPaymentForm = ({
 
   const handleSetFullBalance = () => {
     if (currentLaborerWage) {
+      const fullBal = currentLaborerWage.balanceDue.toFixed(2);
       setForm((prev) => ({
         ...prev,
-        amount: currentLaborerWage.balanceDue.toFixed(2)
+        amount: fullBal
       }));
+      if (touched.amount) {
+        setErrors((prev) => ({ ...prev, amount: validateField('amount', fullBal) }));
+      }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const newErrors = {};
@@ -84,34 +118,67 @@ const RecordPaymentForm = ({
       return;
     }
 
-    const savedPayment = recordPayment({
-      laborerId: selectedLaborerId,
-      amount: parseFloat(form.amount),
-      date: form.date,
-      method: form.method,
-      reference: form.reference,
-      approvedBy: form.approvedBy,
-      notes: form.notes
-    });
+    setIsSubmitting(true);
+    setServerError('');
 
-    onClose();
-    if (onSuccessPayment) {
-      onSuccessPayment(savedPayment, currentLaborerWage);
+    try {
+      const savedPayment = await recordPayment({
+        laborerId: selectedLaborerId,
+        amount: parseFloat(form.amount),
+        date: form.date,
+        method: form.method,
+        reference: form.reference.trim(),
+        approvedBy: form.approvedBy.trim(),
+        notes: form.notes.trim()
+      });
+
+      onClose();
+      if (onSuccessPayment) {
+        onSuccessPayment(savedPayment, currentLaborerWage);
+      }
+    } catch (err) {
+      setServerError(err.message || 'Failed to record payment. Please check server logs.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const numAmount = parseFloat(form.amount) || 0;
+  const isOverBalance = currentLaborerWage && currentLaborerWage.balanceDue > 0 && numAmount > currentLaborerWage.balanceDue;
+
   return (
     <form onSubmit={handleSubmit} noValidate>
+      {serverError && (
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'rgba(244, 63, 94, 0.15)',
+            border: '1px solid var(--rose)',
+            color: '#fda4af',
+            fontSize: '0.84rem',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <AlertCircle size={16} style={{ flexShrink: 0 }} />
+          <span>{serverError}</span>
+        </div>
+      )}
+
       <div className="form-row">
         <div className="form-group">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <label className="form-label" htmlFor="pay-amount">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <label className="form-label" htmlFor="pay-amount" style={{ margin: 0 }}>
               Payment Amount (Rs. LKR) <span className="required">*</span>
             </label>
             {currentLaborerWage && currentLaborerWage.balanceDue > 0 && (
               <button
                 type="button"
                 onClick={handleSetFullBalance}
+                disabled={isSubmitting}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -135,12 +202,17 @@ const RecordPaymentForm = ({
             value={form.amount}
             onChange={handleChange}
             onBlur={handleBlur}
-            className={`form-control ${touched.amount && errors.amount ? 'is-invalid' : ''}`}
+            disabled={isSubmitting}
+            className={`form-control ${touched.amount ? (errors.amount ? 'is-invalid' : 'is-valid') : ''}`}
             required
           />
-          {touched.amount && errors.amount && (
+          {touched.amount && errors.amount ? (
             <span className="form-error-msg"><AlertCircle size={13} /> {errors.amount}</span>
-          )}
+          ) : isOverBalance ? (
+            <span style={{ fontSize: '0.74rem', color: 'var(--amber-primary)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+              <Info size={12} /> Note: Payment exceeds current outstanding due of Rs. {currentLaborerWage.balanceDue.toFixed(2)} (Advance).
+            </span>
+          ) : null}
         </div>
 
         <div className="form-group">
@@ -151,12 +223,17 @@ const RecordPaymentForm = ({
             id="pay-date"
             type="date"
             name="date"
+            max={todayStr}
             value={form.date}
             onChange={handleChange}
             onBlur={handleBlur}
-            className={`form-control ${touched.date && errors.date ? 'is-invalid' : ''}`}
+            disabled={isSubmitting}
+            className={`form-control ${touched.date ? (errors.date ? 'is-invalid' : 'is-valid') : ''}`}
             required
           />
+          {touched.date && errors.date && (
+            <span className="form-error-msg"><AlertCircle size={13} /> {errors.date}</span>
+          )}
         </div>
       </div>
 
@@ -168,6 +245,7 @@ const RecordPaymentForm = ({
             name="method"
             value={form.method}
             onChange={handleChange}
+            disabled={isSubmitting}
             className="form-control"
           >
             <option value="Bank Transfer">Bank Wire Transfer</option>
@@ -188,7 +266,8 @@ const RecordPaymentForm = ({
             value={form.reference}
             onChange={handleChange}
             onBlur={handleBlur}
-            className={`form-control ${touched.reference && errors.reference ? 'is-invalid' : ''}`}
+            disabled={isSubmitting}
+            className={`form-control ${touched.reference ? (errors.reference ? 'is-invalid' : 'is-valid') : ''}`}
             required
           />
           {touched.reference && errors.reference && (
@@ -208,9 +287,13 @@ const RecordPaymentForm = ({
           value={form.approvedBy}
           onChange={handleChange}
           onBlur={handleBlur}
-          className={`form-control ${touched.approvedBy && errors.approvedBy ? 'is-invalid' : ''}`}
+          disabled={isSubmitting}
+          className={`form-control ${touched.approvedBy ? (errors.approvedBy ? 'is-invalid' : 'is-valid') : ''}`}
           required
         />
+        {touched.approvedBy && errors.approvedBy && (
+          <span className="form-error-msg"><AlertCircle size={13} /> {errors.approvedBy}</span>
+        )}
       </div>
 
       <div className="form-group">
@@ -221,18 +304,28 @@ const RecordPaymentForm = ({
           rows="2"
           value={form.notes}
           onChange={handleChange}
+          disabled={isSubmitting}
           className="form-control"
           placeholder="e.g. Bi-weekly settlement including 12 hours overtime bonus"
         />
       </div>
 
       <div className="modal-footer" style={{ margin: '16px -24px -24px -24px' }}>
-        <button type="button" className="btn btn-outline" onClick={onClose}>
+        <button type="button" className="btn btn-outline" onClick={onClose} disabled={isSubmitting}>
           Cancel
         </button>
-        <button type="submit" className="btn btn-primary">
-          <DollarSign size={18} />
-          Finalize & Record Payment
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+              Recording Payment...
+            </>
+          ) : (
+            <>
+              <DollarSign size={18} />
+              Finalize & Record Payment
+            </>
+          )}
         </button>
       </div>
     </form>

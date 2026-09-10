@@ -46,18 +46,34 @@ router.post('/', async (req, res) => {
       description = ''
     } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ error: 'Site name is required' });
+    if (!name || name.trim().length < 3) {
+      return res.status(400).json({ error: 'Site name must be at least 3 characters' });
     }
 
-    if (startDate) {
-      const today = new Date().toISOString().split('T')[0];
-      if (startDate < today) {
-        return res.status(400).json({ error: 'Commencement date cannot be in the past.' });
-      }
+    // Check duplicate site name
+    const [existingName] = await query('SELECT id FROM sites WHERE LOWER(name) = LOWER(?) LIMIT 1', [name.trim()]);
+    if (existingName) {
+      return res.status(400).json({ error: `A site with the name "${name.trim()}" already exists` });
+    }
+
+    if (startDate && endDate && endDate < startDate) {
+      return res.status(400).json({ error: 'Completion date cannot be before commencement date' });
+    }
+
+    const parsedBudget = parseFloat(budget) || 0.00;
+    if (parsedBudget < 0) {
+      return res.status(400).json({ error: 'Budget cannot be a negative number' });
     }
 
     const siteCode = code ? code.trim() : `PRJ-${Math.floor(100 + Math.random() * 900)}-${new Date().getFullYear()}`;
+
+    // Check duplicate site code if specified
+    if (code) {
+      const [existingCode] = await query('SELECT id FROM sites WHERE LOWER(code) = LOWER(?) LIMIT 1', [siteCode]);
+      if (existingCode) {
+        return res.status(400).json({ error: `A site with Project Code "${siteCode}" already exists` });
+      }
+    }
 
     // Generate unique ID e.g. SITE-01
     const [countResult] = await query('SELECT COUNT(*) as cnt FROM sites');
@@ -70,17 +86,17 @@ router.post('/', async (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       newId,
-      name,
+      name.trim(),
       siteCode,
-      location,
+      location.trim(),
       type,
-      client,
+      client.trim(),
       startDate || null,
       endDate || null,
-      parseFloat(budget) || 0.00,
-      manager,
+      parsedBudget,
+      manager.trim(),
       status,
-      description
+      description.trim()
     ]);
 
     const [created] = await query(`
@@ -124,6 +140,26 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Site not found' });
     }
 
+    if (name !== undefined) {
+      if (!name || name.trim().length < 3) {
+        return res.status(400).json({ error: 'Site name must be at least 3 characters' });
+      }
+      const [duplicateName] = await query('SELECT id FROM sites WHERE LOWER(name) = LOWER(?) AND id != ? LIMIT 1', [name.trim(), id]);
+      if (duplicateName) {
+        return res.status(400).json({ error: `Another site with the name "${name.trim()}" already exists` });
+      }
+    }
+
+    const effStartDate = startDate !== undefined ? startDate : existing.start_date;
+    const effEndDate = endDate !== undefined ? endDate : existing.end_date;
+    if (effStartDate && effEndDate && effEndDate < effStartDate) {
+      return res.status(400).json({ error: 'Completion date cannot be before commencement date' });
+    }
+
+    if (budget !== undefined && parseFloat(budget) < 0) {
+      return res.status(400).json({ error: 'Budget cannot be a negative number' });
+    }
+
     await query(`
       UPDATE sites SET
         name = COALESCE(?, name),
@@ -139,17 +175,17 @@ router.put('/:id', async (req, res) => {
         description = COALESCE(?, description)
       WHERE id = ?
     `, [
-      name !== undefined ? name : null,
-      code !== undefined ? code : null,
-      location !== undefined ? location : null,
+      name !== undefined ? name.trim() : null,
+      code !== undefined ? code.trim() : null,
+      location !== undefined ? location.trim() : null,
       type !== undefined ? type : null,
-      client !== undefined ? client : null,
+      client !== undefined ? client.trim() : null,
       startDate !== undefined ? startDate : null,
       endDate !== undefined ? endDate : null,
       budget !== undefined ? parseFloat(budget) : null,
-      manager !== undefined ? manager : null,
+      manager !== undefined ? manager.trim() : null,
       status !== undefined ? status : null,
-      description !== undefined ? description : null,
+      description !== undefined ? description.trim() : null,
       id
     ]);
 

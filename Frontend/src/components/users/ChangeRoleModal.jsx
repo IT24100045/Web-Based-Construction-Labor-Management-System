@@ -9,7 +9,8 @@ import {
   Users,
   Receipt,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 
 const ChangeRoleModal = ({ isOpen, user, onClose }) => {
@@ -18,6 +19,7 @@ const ChangeRoleModal = ({ isOpen, user, onClose }) => {
 
   const [selectedRole, setSelectedRole] = useState(user?.role || 'site_supervisor');
   const [title, setTitle] = useState(user?.title || '');
+  const [titleError, setTitleError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -43,16 +45,30 @@ const ChangeRoleModal = ({ isOpen, user, onClose }) => {
   const handleSelectRole = (roleId) => {
     setSelectedRole(roleId);
     setError(null);
-    // Auto-suggest designation title if current title matches standard role title
     const targetRole = SYSTEM_ROLES.find((r) => r.id === roleId);
     if (targetRole) {
       setTitle(targetRole.title);
     }
   };
 
+  const handleTitleChange = (e) => {
+    const val = e.target.value;
+    setTitle(val);
+    if (val.length > 80) {
+      setTitleError('Designation title cannot exceed 80 characters.');
+    } else {
+      setTitleError('');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) return;
+
+    if (title.length > 80) {
+      setTitleError('Designation title cannot exceed 80 characters.');
+      return;
+    }
 
     if (user.username === 'admin' && selectedRole !== 'admin') {
       const confirmed = window.confirm(
@@ -229,14 +245,19 @@ const ChangeRoleModal = ({ isOpen, user, onClose }) => {
           <input
             id="edit-user-title"
             type="text"
-            className="form-control"
+            className={`form-control ${titleError ? 'is-invalid' : ''}`}
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={handleTitleChange}
+            disabled={isSaving}
             placeholder="e.g. Lead Project Manager - Western Province"
           />
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-            Displayed on daily muster sheets, reports, and administrative logs.
-          </span>
+          {titleError ? (
+            <span className="form-error-msg">{titleError}</span>
+          ) : (
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+              Displayed on daily muster sheets, reports, and administrative logs.
+            </span>
+          )}
         </div>
 
         {/* Modal Actions */}
@@ -254,7 +275,14 @@ const ChangeRoleModal = ({ isOpen, user, onClose }) => {
             className="btn btn-primary"
             disabled={isSaving}
           >
-            {isSaving ? 'Updating...' : 'Save Role Change'}
+            {isSaving ? (
+              <>
+                <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Updating...</span>
+              </>
+            ) : (
+              <span>Save Role Change</span>
+            )}
           </button>
         </div>
       </form>

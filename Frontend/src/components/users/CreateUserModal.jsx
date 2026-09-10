@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import Modal from '../common/Modal';
 import { useAuth, SYSTEM_ROLES } from '../../context/AuthContext';
 import { useLabor } from '../../context/LaborContext';
-import { UserPlus, Lock, Mail, User, ShieldCheck, Eye, EyeOff, Sparkles, AlertCircle } from 'lucide-react';
+import { UserPlus, Eye, EyeOff, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
 
 const CreateUserModal = ({ isOpen, onClose }) => {
-  const { createUser } = useAuth();
+  const { createUser, usersList } = useAuth();
   const { showToast } = useLabor();
 
   const [form, setForm] = useState({
@@ -20,6 +20,7 @@ const CreateUserModal = ({ isOpen, onClose }) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const roleOptions = [
@@ -42,34 +43,112 @@ const CreateUserModal = ({ isOpen, onClose }) => {
 
   const generateRandomPassword = () => {
     const prefix = form.username.trim() || form.role || 'user';
+    const cleanPrefix = prefix.replace(/[^a-zA-Z0-9]/g, '');
     const randNum = Math.floor(1000 + Math.random() * 9000);
-    const generated = `${prefix}${randNum}!`;
+    const generated = `${cleanPrefix.charAt(0).toUpperCase() + cleanPrefix.slice(1)}${randNum}!`;
     setForm((prev) => ({ ...prev, password: generated }));
+    if (touched.password) {
+      setErrors((prev) => ({ ...prev, password: validateField('password', generated) }));
+    }
   };
 
-  const validate = () => {
-    const errs = {};
-    if (!form.name.trim()) errs.name = 'Full name is required.';
-    if (!form.username.trim()) errs.username = 'Username is required.';
-    else if (form.username.trim().length < 3) errs.username = 'Username must be at least 3 characters.';
-    else if (!/^[a-zA-Z0-9._-]+$/.test(form.username.trim())) {
-      errs.username = 'Username can only contain letters, numbers, dots, and hyphens.';
+  const validateField = (field, value, allValues = form) => {
+    let err = '';
+    const trimmed = (value || '').trim();
+
+    switch (field) {
+      case 'name':
+        if (!trimmed) {
+          err = 'Full name is required.';
+        } else if (trimmed.length < 3) {
+          err = 'Full name must be at least 3 characters.';
+        } else if (trimmed.length > 60) {
+          err = 'Full name cannot exceed 60 characters.';
+        }
+        break;
+      case 'username':
+        if (!trimmed) {
+          err = 'Username is required.';
+        } else if (trimmed.length < 3) {
+          err = 'Username must be at least 3 characters.';
+        } else if (trimmed.length > 30) {
+          err = 'Username cannot exceed 30 characters.';
+        } else if (!/^[a-zA-Z0-9._-]+$/.test(trimmed)) {
+          err = 'Username can only contain letters, numbers, dots, and hyphens.';
+        } else if (usersList && usersList.some((u) => u.username?.toLowerCase() === trimmed.toLowerCase())) {
+          err = `Username "${trimmed.toLowerCase()}" is already registered.`;
+        }
+        break;
+      case 'email':
+        if (!trimmed) {
+          err = 'Email address is required.';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+          err = 'Please enter a valid email address.';
+        } else if (usersList && usersList.some((u) => u.email?.toLowerCase() === trimmed.toLowerCase())) {
+          err = `Email "${trimmed.toLowerCase()}" is already registered.`;
+        }
+        break;
+      case 'password':
+        if (!value) {
+          err = 'Password is required.';
+        } else if (value.length < 6) {
+          err = 'Password must be at least 6 characters.';
+        } else if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+          err = 'Password must contain both letters and numbers.';
+        }
+        break;
+      default:
+        break;
+    }
+    return err;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    const updated = { ...form, [name]: value };
+    setForm(updated);
+
+    if (errors.server) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.server;
+        return next;
+      });
     }
 
-    if (!form.email.trim()) errs.email = 'Email address is required.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      errs.email = 'Please enter a valid email address.';
+    if (touched[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: validateField(name, value, updated)
+      }));
     }
+  };
 
-    if (!form.password) errs.password = 'Password is required.';
-    else if (form.password.length < 4) errs.password = 'Password must be at least 4 characters.';
-
-    return errs;
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    setErrors((prev) => ({
+      ...prev,
+      [name]: validateField(name, value, form)
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const errs = validate();
+
+    const errs = {};
+    ['name', 'username', 'email', 'password'].forEach((f) => {
+      const err = validateField(f, form[f], form);
+      if (err) errs[f] = err;
+    });
+
+    setTouched({
+      name: true,
+      username: true,
+      email: true,
+      password: true
+    });
+
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -79,10 +158,13 @@ const CreateUserModal = ({ isOpen, onClose }) => {
     try {
       await createUser({
         ...form,
+        name: form.name.trim(),
         username: form.username.trim().toLowerCase(),
-        email: form.email.trim().toLowerCase()
+        email: form.email.trim().toLowerCase(),
+        title: form.title.trim()
       });
-      showToast(`User account "${form.username}" created successfully.`);
+
+      showToast(`User account "${form.username.trim().toLowerCase()}" created successfully.`);
       setForm({
         name: '',
         username: '',
@@ -93,10 +175,11 @@ const CreateUserModal = ({ isOpen, onClose }) => {
         status: 'Active'
       });
       setErrors({});
+      setTouched({});
       onClose();
     } catch (err) {
-      setErrors({ server: err.message });
-      showToast(err.message, 'error');
+      setErrors((prev) => ({ ...prev, server: err.message || 'Failed to create user account' }));
+      showToast(err.message || 'Failed to create user account', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -120,7 +203,7 @@ const CreateUserModal = ({ isOpen, onClose }) => {
               gap: '8px'
             }}
           >
-            <AlertCircle size={15} />
+            <AlertCircle size={15} style={{ flexShrink: 0 }} />
             <span>{errors.server}</span>
           </div>
         )}
@@ -130,21 +213,19 @@ const CreateUserModal = ({ isOpen, onClose }) => {
             <label className="form-label" htmlFor="user-fullname">
               Full Name <span className="required">*</span>
             </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                id="user-fullname"
-                type="text"
-                className={`form-control ${errors.name ? 'is-invalid' : ''}`}
-                placeholder="e.g. Priyantha Jayasuriya"
-                value={form.name}
-                onChange={(e) => {
-                  setForm({ ...form, name: e.target.value });
-                  if (errors.name) setErrors({ ...errors, name: null });
-                }}
-                required
-              />
-            </div>
-            {errors.name && (
+            <input
+              id="user-fullname"
+              type="text"
+              name="name"
+              disabled={isSubmitting}
+              className={`form-control ${touched.name ? (errors.name ? 'is-invalid' : 'is-valid') : ''}`}
+              placeholder="e.g. Priyantha Jayasuriya"
+              value={form.name}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              required
+            />
+            {touched.name && errors.name && (
               <span className="form-error-msg"><AlertCircle size={13} /> {errors.name}</span>
             )}
           </div>
@@ -157,9 +238,11 @@ const CreateUserModal = ({ isOpen, onClose }) => {
             </label>
             <select
               id="user-role"
+              name="role"
               className="form-control"
               value={form.role}
               onChange={handleRoleChange}
+              disabled={isSubmitting}
             >
               {roleOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -176,10 +259,12 @@ const CreateUserModal = ({ isOpen, onClose }) => {
             <input
               id="user-title"
               type="text"
+              name="title"
+              disabled={isSubmitting}
               className="form-control"
               placeholder="e.g. Field Operations Lead"
               value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              onChange={handleChange}
             />
           </div>
         </div>
@@ -192,16 +277,16 @@ const CreateUserModal = ({ isOpen, onClose }) => {
             <input
               id="user-username"
               type="text"
-              className={`form-control ${errors.username ? 'is-invalid' : ''}`}
+              name="username"
+              disabled={isSubmitting}
+              className={`form-control ${touched.username ? (errors.username ? 'is-invalid' : 'is-valid') : ''}`}
               placeholder="e.g. priyantha_sup"
               value={form.username}
-              onChange={(e) => {
-                setForm({ ...form, username: e.target.value.toLowerCase() });
-                if (errors.username) setErrors({ ...errors, username: null });
-              }}
+              onChange={handleChange}
+              onBlur={handleBlur}
               required
             />
-            {errors.username && (
+            {touched.username && errors.username && (
               <span className="form-error-msg"><AlertCircle size={13} /> {errors.username}</span>
             )}
           </div>
@@ -213,16 +298,16 @@ const CreateUserModal = ({ isOpen, onClose }) => {
             <input
               id="user-email"
               type="email"
-              className={`form-control ${errors.email ? 'is-invalid' : ''}`}
+              name="email"
+              disabled={isSubmitting}
+              className={`form-control ${touched.email ? (errors.email ? 'is-invalid' : 'is-valid') : ''}`}
               placeholder="name@jalenterprises.lk"
               value={form.email}
-              onChange={(e) => {
-                setForm({ ...form, email: e.target.value });
-                if (errors.email) setErrors({ ...errors, email: null });
-              }}
+              onChange={handleChange}
+              onBlur={handleBlur}
               required
             />
-            {errors.email && (
+            {touched.email && errors.email && (
               <span className="form-error-msg"><AlertCircle size={13} /> {errors.email}</span>
             )}
           </div>
@@ -237,6 +322,7 @@ const CreateUserModal = ({ isOpen, onClose }) => {
               <button
                 type="button"
                 onClick={generateRandomPassword}
+                disabled={isSubmitting}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -257,19 +343,20 @@ const CreateUserModal = ({ isOpen, onClose }) => {
               <input
                 id="user-password"
                 type={showPassword ? 'text' : 'password'}
-                className={`form-control ${errors.password ? 'is-invalid' : ''}`}
-                placeholder="Enter password (min 4 chars)"
+                name="password"
+                disabled={isSubmitting}
+                className={`form-control ${touched.password ? (errors.password ? 'is-invalid' : 'is-valid') : ''}`}
+                placeholder="Min 6 chars (letters + numbers)"
                 value={form.password}
-                onChange={(e) => {
-                  setForm({ ...form, password: e.target.value });
-                  if (errors.password) setErrors({ ...errors, password: null });
-                }}
+                onChange={handleChange}
+                onBlur={handleBlur}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex="-1"
+                disabled={isSubmitting}
                 style={{
                   position: 'absolute',
                   right: '10px',
@@ -285,8 +372,10 @@ const CreateUserModal = ({ isOpen, onClose }) => {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-            {errors.password && (
+            {touched.password && errors.password ? (
               <span className="form-error-msg"><AlertCircle size={13} /> {errors.password}</span>
+            ) : (
+              <span className="form-hint">At least 6 characters including letters and numbers</span>
             )}
           </div>
 
@@ -296,9 +385,11 @@ const CreateUserModal = ({ isOpen, onClose }) => {
             </label>
             <select
               id="user-status"
+              name="status"
               className="form-control"
               value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              onChange={handleChange}
+              disabled={isSubmitting}
             >
               <option value="Active">Active</option>
               <option value="Suspended">Suspended</option>
@@ -311,8 +402,17 @@ const CreateUserModal = ({ isOpen, onClose }) => {
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-            <UserPlus size={16} />
-            <span>{isSubmitting ? 'Creating Account...' : 'Create Account'}</span>
+            {isSubmitting ? (
+              <>
+                <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Creating Account...</span>
+              </>
+            ) : (
+              <>
+                <UserPlus size={16} />
+                <span>Create Account</span>
+              </>
+            )}
           </button>
         </div>
       </form>

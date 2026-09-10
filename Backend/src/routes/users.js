@@ -51,8 +51,11 @@ router.post('/', async (req, res) => {
     if (!email || !email.trim()) {
       return res.status(400).json({ error: 'Email address is required' });
     }
-    if (!password || password.length < 4) {
-      return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain both letters and numbers' });
     }
     if (!VALID_ROLES.includes(role)) {
       return res.status(400).json({ error: `Invalid role. Allowed roles: ${VALID_ROLES.join(', ')}` });
@@ -207,8 +210,8 @@ router.put('/:id/change-password', async (req, res) => {
     const { id } = req.params;
     const { currentPassword, newPassword } = req.body;
 
-    if (!newPassword || newPassword.trim().length < 4) {
-      return res.status(400).json({ error: 'New password must be at least 4 characters long' });
+    if (!newPassword || newPassword.trim().length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
     }
 
     const [userRows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
