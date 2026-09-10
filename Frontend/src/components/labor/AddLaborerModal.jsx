@@ -2,10 +2,17 @@ import React, { useState } from 'react';
 import Modal from '../common/Modal';
 import { useLabor } from '../../context/LaborContext';
 import { JOB_ROLES, SKILL_LEVELS } from '../../utils/mockData';
-import { UserCheck, AlertCircle } from 'lucide-react';
+import {
+  validateLaborerField,
+  validateLaborerForm,
+  identifyNicFormat,
+  MIN_HOURLY_RATE,
+  MAX_HOURLY_RATE
+} from '../../utils/laborValidation';
+import { UserCheck, AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
 
 const AddLaborerModal = ({ isOpen, onClose }) => {
-  const { addLaborer, sites } = useLabor();
+  const { addLaborer, sites, laborers } = useLabor();
 
   const initialForm = {
     name: '',
@@ -23,81 +30,45 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
-  const validateField = (field, value) => {
-    let err = '';
-    switch (field) {
-      case 'name':
-        if (!value.trim()) {
-          err = 'Full name is required.';
-        } else if (value.trim().length < 3) {
-          err = 'Name must be at least 3 characters.';
-        }
-        break;
-      case 'nic':
-        if (!value.trim()) {
-          err = 'NIC or Employee ID is required.';
-        } else if (!/^[0-9]{9}[vVxX]?$|^[0-9]{12}$|^EMP-[0-9]{3,6}$/i.test(value.trim())) {
-          err = 'Invalid format. Use 9 digits + V/X, 12 digits, or EMP-XXX.';
-        }
-        break;
-      case 'phone':
-        if (!value.trim()) {
-          err = 'Contact phone number is required.';
-        } else if (!/^\+?[0-9\s\-()]{7,15}$/.test(value.trim())) {
-          err = 'Enter a valid telephone number (7-15 digits).';
-        }
-        break;
-      case 'email':
-        if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
-          err = 'Please enter a valid email address.';
-        }
-        break;
-      case 'hourlyRate':
-        if (!value || isNaN(value) || parseFloat(value) <= 0) {
-          err = 'Wage rate must be a valid positive number.';
-        }
-        break;
-      case 'emergencyContact':
-        if (!value.trim()) {
-          err = 'Emergency contact is required for construction site safety compliance.';
-        }
-        break;
-      default:
-        break;
-    }
-    return err;
-  };
+  const nicMeta = identifyNicFormat(form.nic);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    // Auto format NIC to uppercase
+    const formattedValue = name === 'nic' ? value.toUpperCase().trim() : value;
+
+    setForm((prev) => ({ ...prev, [name]: formattedValue }));
+    if (submitError) setSubmitError(null);
+
     if (touched[name]) {
+      const error = validateLaborerField(name, formattedValue, { existingLaborers: laborers });
       setErrors((prev) => ({
         ...prev,
-        [name]: validateField(name, value)
+        [name]: error
       }));
     }
   };
 
   const handleBlur = (e) => {
     const { name, value } = e.target;
+    const formattedValue = name === 'nic' ? value.toUpperCase().trim() : value;
     setTouched((prev) => ({ ...prev, [name]: true }));
+    const error = validateLaborerField(name, formattedValue, { existingLaborers: laborers });
     setErrors((prev) => ({
       ...prev,
-      [name]: validateField(name, value)
+      [name]: error
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError(null);
 
-    // Validate all fields
-    const newErrors = {};
-    Object.keys(form).forEach((key) => {
-      const err = validateField(key, form[key]);
-      if (err) newErrors[key] = err;
-    });
+    // Validate entire form against existing laborers list
+    const { isValid, errors: validationErrors } = validateLaborerForm(form, { existingLaborers: laborers });
 
     setTouched({
       name: true,
@@ -106,18 +77,47 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
       email: true,
       address: true,
       emergencyContact: true,
-      hourlyRate: true
+      hourlyRate: true,
+      role: true,
+      skillLevel: true
     });
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    if (!isValid) {
+      setErrors(validationErrors);
       return;
     }
 
-    addLaborer(form);
+    setIsSubmitting(true);
+    try {
+      await addLaborer({
+        ...form,
+        name: form.name.trim(),
+        nic: form.nic.trim().toUpperCase(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        address: form.address.trim(),
+        emergencyContact: form.emergencyContact.trim(),
+        hourlyRate: parseFloat(form.hourlyRate) || 1200
+      });
+
+      setForm(initialForm);
+      setErrors({});
+      setTouched({});
+      setSubmitError(null);
+      onClose();
+    } catch (err) {
+      console.error('Failed to register laborer:', err);
+      setSubmitError(err.message || 'Failed to register laborer. Please review the details and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = () => {
     setForm(initialForm);
     setErrors({});
     setTouched({});
+    setSubmitError(null);
     onClose();
   };
 
@@ -126,18 +126,51 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
     return errors[field] ? 'is-invalid' : 'is-valid';
   };
 
+  const otRate = (parseFloat(form.hourlyRate || 0) * 1.5).toFixed(2);
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Register New Laborer Profile" maxWidth="680px">
+    <Modal isOpen={isOpen} onClose={handleCancel} title="Register New Laborer Profile" maxWidth="680px">
       <form onSubmit={handleSubmit} noValidate>
-        <div style={{ marginBottom: '16px', background: 'rgba(245, 158, 11, 0.08)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.84rem', color: 'var(--amber-light)' }}>
-          Please verify the laborer's National Identity Card (NIC) and safety emergency contact before site assignment.
+        {/* Compliance Notice */}
+        <div style={{ marginBottom: '16px', background: 'rgba(245, 158, 11, 0.08)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.84rem', color: 'var(--amber-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ShieldAlert size={16} style={{ flexShrink: 0 }} />
+          <span>Please verify the laborer's National Identity Card (NIC) and emergency contact for occupational site compliance.</span>
         </div>
 
+        {/* Server / Form Submit Error Notice */}
+        {submitError && (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '10px 14px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.82rem',
+              background: 'rgba(244, 63, 94, 0.12)',
+              border: '1px solid rgba(244, 63, 94, 0.3)',
+              color: '#fda4af',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <span>{submitError}</span>
+          </div>
+        )}
+
         <div className="form-row">
+          {/* Full Name */}
           <div className="form-group">
-            <label className="form-label" htmlFor="laborer-name">
-              Full Name <span className="required">*</span>
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label className="form-label" htmlFor="laborer-name">
+                Full Name <span className="required">*</span>
+              </label>
+              {touched.name && !errors.name && form.name.trim() && (
+                <span style={{ fontSize: '0.7rem', color: 'var(--emerald)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <CheckCircle2 size={12} /> Valid Name
+                </span>
+              )}
+            </div>
             <input
               id="laborer-name"
               type="text"
@@ -148,16 +181,36 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
               onBlur={handleBlur}
               className={`form-control ${getValidationClass('name')}`}
               required
+              maxLength={70}
             />
             {touched.name && errors.name && (
               <span className="form-error-msg"><AlertCircle size={13} /> {errors.name}</span>
             )}
+            {!touched.name && <span className="form-hint">Legal name as stated on identification document</span>}
           </div>
 
+          {/* NIC / Employee ID */}
           <div className="form-group">
-            <label className="form-label" htmlFor="laborer-nic">
-              NIC / Employee ID <span className="required">*</span>
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label className="form-label" htmlFor="laborer-nic">
+                NIC / Employee ID <span className="required">*</span>
+              </label>
+              {nicMeta && nicMeta.valid && (
+                <span
+                  style={{
+                    fontSize: '0.68rem',
+                    padding: '1px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    color: '#34d399',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    fontWeight: 600
+                  }}
+                >
+                  {nicMeta.label}
+                </span>
+              )}
+            </div>
             <input
               id="laborer-nic"
               type="text"
@@ -168,35 +221,49 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
               onBlur={handleBlur}
               className={`form-control ${getValidationClass('nic')}`}
               required
+              maxLength={15}
             />
-            {touched.nic && errors.nic && (
+            {touched.nic && errors.nic ? (
               <span className="form-error-msg"><AlertCircle size={13} /> {errors.nic}</span>
+            ) : (
+              <span className="form-hint">Accepted: 12-digit Smart NIC, 9-digit+V/X, or EMP-XXX</span>
             )}
-            {!errors.nic && <span className="form-hint">Accepted: 12-digit NIC, 9-digit+V, or EMP-XXX</span>}
           </div>
         </div>
 
         <div className="form-row">
+          {/* Contact Phone */}
           <div className="form-group">
-            <label className="form-label" htmlFor="laborer-phone">
-              Contact Phone <span className="required">*</span>
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label className="form-label" htmlFor="laborer-phone">
+                Contact Phone <span className="required">*</span>
+              </label>
+              {touched.phone && !errors.phone && form.phone.trim() && (
+                <span style={{ fontSize: '0.7rem', color: 'var(--emerald)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <CheckCircle2 size={12} /> Valid Phone
+                </span>
+              )}
+            </div>
             <input
               id="laborer-phone"
               type="tel"
               name="phone"
-              placeholder="+94 77 123 4567"
+              placeholder="e.g. +94 77 123 4567 or 0771234567"
               value={form.phone}
               onChange={handleChange}
               onBlur={handleBlur}
               className={`form-control ${getValidationClass('phone')}`}
               required
+              maxLength={16}
             />
-            {touched.phone && errors.phone && (
+            {touched.phone && errors.phone ? (
               <span className="form-error-msg"><AlertCircle size={13} /> {errors.phone}</span>
+            ) : (
+              <span className="form-hint">Must contain 9 to 12 digits (e.g. 077 123 4567 or +94 77 123 4567)</span>
             )}
           </div>
 
+          {/* Email Address */}
           <div className="form-group">
             <label className="form-label" htmlFor="laborer-email">
               Email Address <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(Optional)</span>
@@ -210,6 +277,7 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
               onChange={handleChange}
               onBlur={handleBlur}
               className={`form-control ${getValidationClass('email')}`}
+              maxLength={100}
             />
             {touched.email && errors.email && (
               <span className="form-error-msg"><AlertCircle size={13} /> {errors.email}</span>
@@ -218,6 +286,7 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
         </div>
 
         <div className="form-row">
+          {/* Job Role */}
           <div className="form-group">
             <label className="form-label" htmlFor="laborer-role">
               Job Role / Trade <span className="required">*</span>
@@ -235,6 +304,7 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
             </select>
           </div>
 
+          {/* Skill Tier */}
           <div className="form-group">
             <label className="form-label" htmlFor="laborer-skill">
               Skill & Certification Level <span className="required">*</span>
@@ -254,15 +324,24 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
         </div>
 
         <div className="form-row">
+          {/* Hourly Wage Rate */}
           <div className="form-group">
-            <label className="form-label" htmlFor="laborer-rate">
-              Hourly Wage Rate (Rs. LKR) <span className="required">*</span>
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label className="form-label" htmlFor="laborer-rate">
+                Hourly Wage Rate (Rs. LKR) <span className="required">*</span>
+              </label>
+              {parseFloat(form.hourlyRate) >= MIN_HOURLY_RATE && (
+                <span style={{ fontSize: '0.72rem', color: 'var(--amber-primary)', fontWeight: 600 }}>
+                  OT (1.5&times;): Rs. {otRate}/hr
+                </span>
+              )}
+            </div>
             <input
               id="laborer-rate"
               type="number"
-              step="50.00"
-              min="100.00"
+              step="25.00"
+              min={MIN_HOURLY_RATE}
+              max={MAX_HOURLY_RATE}
               name="hourlyRate"
               placeholder="1400.00"
               value={form.hourlyRate}
@@ -271,15 +350,17 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
               className={`form-control ${getValidationClass('hourlyRate')}`}
               required
             />
-            {touched.hourlyRate && errors.hourlyRate && (
+            {touched.hourlyRate && errors.hourlyRate ? (
               <span className="form-error-msg"><AlertCircle size={13} /> {errors.hourlyRate}</span>
+            ) : (
+              <span className="form-hint">Standard rate: Rs. {MIN_HOURLY_RATE} - Rs. {MAX_HOURLY_RATE} / hour</span>
             )}
-            <span className="form-hint">Standard OT multiplier is 1.5x regular rate (Rs. ${(parseFloat(form.hourlyRate || 0) * 1.5).toFixed(2)}/hr)</span>
           </div>
 
+          {/* Site Allocation */}
           <div className="form-group">
             <label className="form-label" htmlFor="laborer-site">
-              Assign to Site / Project
+              Assign to Construction Site
             </label>
             <select
               id="laborer-site"
@@ -295,13 +376,22 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
                 </option>
               ))}
             </select>
+            <span className="form-hint">Can be assigned or transferred at any time</span>
           </div>
         </div>
 
+        {/* Emergency Contact */}
         <div className="form-group">
-          <label className="form-label" htmlFor="laborer-emergency">
-            Emergency Contact Details <span className="required">*</span>
-          </label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label className="form-label" htmlFor="laborer-emergency">
+              Emergency Contact & Relation <span className="required">*</span>
+            </label>
+            {touched.emergencyContact && !errors.emergencyContact && form.emergencyContact.trim() && (
+              <span style={{ fontSize: '0.7rem', color: 'var(--emerald)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <CheckCircle2 size={12} /> Valid Contact
+              </span>
+            )}
+          </div>
           <input
             id="laborer-emergency"
             type="text"
@@ -312,34 +402,44 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
             onBlur={handleBlur}
             className={`form-control ${getValidationClass('emergencyContact')}`}
             required
+            maxLength={120}
           />
-          {touched.emergencyContact && errors.emergencyContact && (
+          {touched.emergencyContact && errors.emergencyContact ? (
             <span className="form-error-msg"><AlertCircle size={13} /> {errors.emergencyContact}</span>
+          ) : (
+            <span className="form-hint">Provide full name, relation, and verified contact phone number</span>
           )}
         </div>
 
+        {/* Residential Address */}
         <div className="form-group">
           <label className="form-label" htmlFor="laborer-address">
-            Residential Address
+            Residential Address <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(Optional)</span>
           </label>
           <textarea
             id="laborer-address"
             name="address"
             rows="2"
-            placeholder="Permanent or temporary residential address"
+            placeholder="Permanent or temporary residence address"
             value={form.address}
             onChange={handleChange}
             className="form-control"
+            maxLength={255}
           />
         </div>
 
         <div className="modal-footer" style={{ margin: '0 -24px -24px -24px' }}>
-          <button type="button" className="btn btn-outline" onClick={onClose}>
+          <button type="button" className="btn btn-outline" onClick={handleCancel} disabled={isSubmitting}>
             Cancel
           </button>
-          <button type="submit" className="btn btn-primary">
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={isSubmitting}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+          >
             <UserCheck size={18} />
-            Register Laborer
+            <span>{isSubmitting ? 'Registering Laborer...' : 'Register Laborer'}</span>
           </button>
         </div>
       </form>

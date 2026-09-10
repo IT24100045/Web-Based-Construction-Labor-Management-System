@@ -61,9 +61,13 @@ const LaborerDirectory = ({ onRecordPaymentForLaborer }) => {
     });
   }, [laborers, searchTerm, selectedRole, selectedSite, selectedStatus]);
 
-  const handleDelete = (lab) => {
+  const handleDelete = async (lab) => {
     if (window.confirm(`Are you sure you want to remove laborer "${lab.name}" (${lab.id}) from the directory?`)) {
-      deleteLaborer(lab.id);
+      try {
+        await deleteLaborer(lab.id);
+      } catch (err) {
+        console.error('Failed to delete laborer:', err);
+      }
     }
   };
 

@@ -30,6 +30,9 @@ router.get('/', async (req, res) => {
   }
 });
 
+const NIC_REGEX = /^([0-9]{9}[vVxX]|[0-9]{12}|EMP-[0-9]{3,6})$/i;
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 // POST /api/laborers
 router.post('/', async (req, res) => {
   try {
@@ -48,8 +51,49 @@ router.post('/', async (req, res) => {
       joinDate = new Date().toISOString().split('T')[0]
     } = req.body;
 
-    if (!name || !nic || !role) {
-      return res.status(400).json({ error: 'Name, NIC, and Job Role are required' });
+    const trimmedName = (name || '').trim();
+    const trimmedNic = (nic || '').trim().toUpperCase();
+    const trimmedPhone = (phone || '').trim();
+    const trimmedEmail = (email || '').trim().toLowerCase();
+    const trimmedEmergency = (emergencyContact || '').trim();
+    const parsedRate = parseFloat(hourlyRate);
+
+    // Validation rules
+    if (!trimmedName || trimmedName.length < 3) {
+      return res.status(400).json({ error: 'Full name is required and must be at least 3 characters long.' });
+    }
+
+    if (!trimmedNic || !NIC_REGEX.test(trimmedNic)) {
+      return res.status(400).json({ error: 'Valid NIC (9 digits + V/X, 12 digits) or EMP-XXX is required.' });
+    }
+
+    const phoneDigits = trimmedPhone.replace(/[^0-9]/g, '');
+    if (!trimmedPhone || phoneDigits.length < 9 || phoneDigits.length > 12) {
+      return res.status(400).json({ error: 'Contact phone number must contain between 9 and 12 digits.' });
+    }
+
+    if (trimmedEmail && !EMAIL_REGEX.test(trimmedEmail)) {
+      return res.status(400).json({ error: 'Invalid email address format.' });
+    }
+
+    if (!role || !role.trim()) {
+      return res.status(400).json({ error: 'Job role / trade is required.' });
+    }
+
+    if (isNaN(parsedRate) || parsedRate < 200 || parsedRate > 50000) {
+      return res.status(400).json({ error: 'Hourly wage rate must be a valid number between Rs. 200 and Rs. 50,000.' });
+    }
+
+    if (!trimmedEmergency || trimmedEmergency.length < 5) {
+      return res.status(400).json({ error: 'Emergency contact details are required for occupational safety compliance.' });
+    }
+
+    // Check duplicate NIC
+    const [existingNicRows] = await query('SELECT id, name FROM laborers WHERE UPPER(nic) = ? LIMIT 1', [trimmedNic]);
+    if (existingNicRows && existingNicRows.length > 0) {
+      return res.status(409).json({
+        error: `A laborer with NIC "${trimmedNic}" is already registered (${existingNicRows[0].name}).`
+      });
     }
 
     // Generate unique ID e.g. LAB-101
@@ -63,15 +107,15 @@ router.post('/', async (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       newId,
-      name,
-      nic,
-      phone,
-      email,
-      address,
-      emergencyContact,
-      role,
-      skillLevel,
-      parseFloat(hourlyRate) || 1200.00,
+      trimmedName,
+      trimmedNic,
+      trimmedPhone,
+      trimmedEmail,
+      (address || '').trim(),
+      trimmedEmergency,
+      role.trim(),
+      skillLevel.trim(),
+      parsedRate || 1200.00,
       status,
       assignedSiteId || null,
       joinDate
@@ -122,32 +166,84 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Laborer not found' });
     }
 
+    const trimmedName = name !== undefined ? name.trim() : existing.name;
+    const trimmedNic = nic !== undefined ? nic.trim().toUpperCase() : existing.nic;
+    const trimmedPhone = phone !== undefined ? phone.trim() : existing.phone;
+    const trimmedEmail = email !== undefined ? email.trim().toLowerCase() : existing.email;
+    const trimmedAddress = address !== undefined ? address.trim() : existing.address;
+    const trimmedEmergency = emergencyContact !== undefined ? emergencyContact.trim() : existing.emergency_contact;
+    const updatedRole = role !== undefined ? role.trim() : existing.role;
+    const updatedSkill = skillLevel !== undefined ? skillLevel.trim() : existing.skill_level;
+    const updatedStatus = status !== undefined ? status : existing.status;
+    const parsedRate = hourlyRate !== undefined ? parseFloat(hourlyRate) : existing.hourly_rate;
+
+    // Validation checks on updated fields
+    if (name !== undefined && (!trimmedName || trimmedName.length < 3)) {
+      return res.status(400).json({ error: 'Full name must be at least 3 characters long.' });
+    }
+
+    if (nic !== undefined && (!trimmedNic || !NIC_REGEX.test(trimmedNic))) {
+      return res.status(400).json({ error: 'Valid NIC (9 digits + V/X, 12 digits) or EMP-XXX is required.' });
+    }
+
+    if (phone !== undefined) {
+      const phoneDigits = trimmedPhone.replace(/[^0-9]/g, '');
+      if (!trimmedPhone || phoneDigits.length < 9 || phoneDigits.length > 12) {
+        return res.status(400).json({ error: 'Contact phone number must contain between 9 and 12 digits.' });
+      }
+    }
+
+    if (email !== undefined && trimmedEmail && !EMAIL_REGEX.test(trimmedEmail)) {
+      return res.status(400).json({ error: 'Invalid email address format.' });
+    }
+
+    if (hourlyRate !== undefined && (isNaN(parsedRate) || parsedRate < 200 || parsedRate > 50000)) {
+      return res.status(400).json({ error: 'Hourly wage rate must be between Rs. 200 and Rs. 50,000.' });
+    }
+
+    if (emergencyContact !== undefined && (!trimmedEmergency || trimmedEmergency.length < 5)) {
+      return res.status(400).json({ error: 'Emergency contact details are required for safety compliance.' });
+    }
+
+    // Check duplicate NIC against other laborers
+    if (nic !== undefined && trimmedNic !== existing.nic) {
+      const [duplicate] = await query('SELECT id, name FROM laborers WHERE UPPER(nic) = ? AND id != ? LIMIT 1', [
+        trimmedNic,
+        id
+      ]);
+      if (duplicate && duplicate.length > 0) {
+        return res.status(409).json({
+          error: `Another laborer with NIC "${trimmedNic}" already exists (${duplicate[0].name}).`
+        });
+      }
+    }
+
     await query(`
       UPDATE laborers SET
-        name = COALESCE(?, name),
-        nic = COALESCE(?, nic),
-        phone = COALESCE(?, phone),
-        email = COALESCE(?, email),
-        address = COALESCE(?, address),
-        emergency_contact = COALESCE(?, emergency_contact),
-        role = COALESCE(?, role),
-        skill_level = COALESCE(?, skill_level),
-        hourly_rate = COALESCE(?, hourly_rate),
-        status = COALESCE(?, status),
+        name = ?,
+        nic = ?,
+        phone = ?,
+        email = ?,
+        address = ?,
+        emergency_contact = ?,
+        role = ?,
+        skill_level = ?,
+        hourly_rate = ?,
+        status = ?,
         assigned_site_id = ?,
         join_date = COALESCE(?, join_date)
       WHERE id = ?
     `, [
-      name !== undefined ? name : null,
-      nic !== undefined ? nic : null,
-      phone !== undefined ? phone : null,
-      email !== undefined ? email : null,
-      address !== undefined ? address : null,
-      emergencyContact !== undefined ? emergencyContact : null,
-      role !== undefined ? role : null,
-      skillLevel !== undefined ? skillLevel : null,
-      hourlyRate !== undefined ? parseFloat(hourlyRate) : null,
-      status !== undefined ? status : null,
+      trimmedName,
+      trimmedNic,
+      trimmedPhone,
+      trimmedEmail,
+      trimmedAddress,
+      trimmedEmergency,
+      updatedRole,
+      updatedSkill,
+      parsedRate,
+      updatedStatus,
       assignedSiteId !== undefined ? (assignedSiteId || null) : existing.assigned_site_id,
       joinDate !== undefined ? joinDate : null,
       id

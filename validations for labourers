@@ -1,0 +1,53 @@
+# Laborers Module Validations Walkthrough
+
+## Summary of Changes
+Added a comprehensive, multi-tiered validation system for the **Laborers Module** across frontend forms, shared validation utilities, and backend REST endpoints, with phone numbers strictly validated between **9 to 12 digits**.
+
+---
+
+### 1. Dedicated Labor Validation Utility ([laborValidation.js](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Frontend/src/utils/laborValidation.js))
+Created a centralized validation engine:
+- **Contact Phone (`phone`)**:
+  - **Strict Digit Range**: Must contain between **9 and 12 digits** (`digitsOnly.length >= 9 && digitsOnly.length <= 12`).
+  - Formats: Local (`07X XXX XXXX`), international (`+94 7X XXX XXXX`), or standard formatted numeric sequence.
+  - Duplicate phone check against existing laborers to warn if already registered to another worker.
+- **Full Name (`name`)**:
+  - Required (3 to 70 characters, alphabetic characters, spaces, dots, hyphens only).
+- **NIC / Employee ID (`nic`)**:
+  - Sri Lankan Old NIC (9 digits + `V`/`X`), New Smart NIC (12 digits), or `EMP-XXX`.
+  - Uppercase auto-normalization and live duplicate prevention against existing laborers.
+- **Email Address (`email`)**:
+  - Optional; strictly checked against RFC format up to 100 characters.
+- **Hourly Wage Rate (`hourlyRate`)**:
+  - Minimum wage: **Rs. 200.00 / hr**; maximum ceiling: **Rs. 25,000.00 / hr**.
+  - Live overtime calculation (1.5x regular rate).
+- **Emergency Contact (`emergencyContact`)**:
+  - Mandatory for site safety compliance; must include a contact telephone number and relation/name.
+
+---
+
+### 2. Registration & Edit Modals ([AddLaborerModal.jsx](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Frontend/src/components/labor/AddLaborerModal.jsx) & [EditLaborerModal.jsx](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Frontend/src/components/labor/EditLaborerModal.jsx))
+- **Phone Input Constraint**: `maxLength={16}` allowing international plus prefix and spaces while enforcing 9 to 12 numerical digits.
+- **Hint Updates**: Shows `"Must contain 9 to 12 digits (e.g. 077 123 4567 or +94 77 123 4567)"`.
+- **Live Format Indicators**: Green badge for valid fields, red alert banner and messages for invalid fields.
+- **Submit Protection**: Submit buttons lock with loading indicators during async requests to prevent duplicate submissions.
+
+---
+
+### 3. Backend Route Hardening ([laborers.js](file:///d:/Chris/Web-Based-Construction-Labor-Management-System/Backend/src/routes/laborers.js))
+- Both `POST /api/laborers` and `PUT /api/laborers/:id` extract numerical digits (`trimmedPhone.replace(/[^0-9]/g, '')`) and strictly enforce:
+  ```javascript
+  if (!trimmedPhone || phoneDigits.length < 9 || phoneDigits.length > 12) {
+    return res.status(400).json({ error: 'Contact phone number must contain between 9 and 12 digits.' });
+  }
+  ```
+- Duplicate NIC queries prevent conflicts (`409 Conflict`).
+
+---
+
+## Verification
+1. **Frontend Production Build**: `npm run build` completed with **0 errors**.
+2. **Backend API Validation Tests**:
+   - `phone: '07712345'` (8 digits) &rarr; Rejected with `STATUS: 400 { error: 'Contact phone number must contain between 9 and 12 digits.' }`.
+   - `phone: '0771234567890'` (13 digits) &rarr; Rejected with `STATUS: 400 { error: 'Contact phone number must contain between 9 and 12 digits.' }`.
+   - `phone: '0771234567'` (10 digits) &rarr; Successfully validated and accepted with `STATUS: 201`.
