@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, Calendar, Clock, LogOut, ChevronDown, ShieldCheck, HardHat, Building2, Users, Receipt, Home } from 'lucide-react';
+import { Menu, Calendar, Clock, LogOut, ChevronDown, ShieldCheck, HardHat, Building2, Users, Receipt } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-const Navbar = ({ activeTab, onToggleSidebar, onReturnToHome }) => {
+const Navbar = ({ activeTab, onToggleSidebar }) => {
   const { currentUser, logout } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
@@ -81,13 +81,8 @@ const Navbar = ({ activeTab, onToggleSidebar, onReturnToHome }) => {
         >
           <Menu size={24} />
         </button>
-        <div
-          onClick={onReturnToHome}
-          style={{ cursor: onReturnToHome ? 'pointer' : 'default' }}
-          title={onReturnToHome ? "Return to J A L Enterprises Homepage" : undefined}
-        >
-          <div style={{ fontSize: '0.75rem', color: 'var(--amber-primary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {onReturnToHome && <Home size={11} />}
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--amber-primary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
             J A L Enterprises /
           </div>
           <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff' }}>
@@ -226,36 +221,8 @@ const Navbar = ({ activeTab, onToggleSidebar, onReturnToHome }) => {
                 )}
               </div>
 
-              {/* Navigation & Logout Actions */}
-              <div style={{ paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {onReturnToHome && (
-                  <button
-                    onClick={() => {
-                      setShowRoleDropdown(false);
-                      onReturnToHome();
-                    }}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 10px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: 'none',
-                      background: 'transparent',
-                      color: 'var(--amber-primary)',
-                      cursor: 'pointer',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      transition: 'background 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <Home size={14} />
-                    <span>Return to Homepage</span>
-                  </button>
-                )}
+              {/* Logout Action */}
+              <div style={{ paddingTop: '8px' }}>
                 <button
                   onClick={() => {
                     setShowRoleDropdown(false);
@@ -280,7 +247,7 @@ const Navbar = ({ activeTab, onToggleSidebar, onReturnToHome }) => {
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <LogOut size={14} />
-                  <span>Exit to JAL Portal (Logout)</span>
+                  <span>Sign Out</span>
                 </button>
               </div>
             </div>

@@ -79,7 +79,6 @@ function MainApp({ activeTab: controlledTab, onTabChange, onReturnToHome }) {
         setActiveTab={setActiveTab}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
-        onReturnToHome={onReturnToHome}
       />
 
       {/* Main Content Area */}
@@ -87,7 +86,6 @@ function MainApp({ activeTab: controlledTab, onTabChange, onReturnToHome }) {
         <Navbar
           activeTab={activeTab}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-          onReturnToHome={onReturnToHome}
         />
 
         <main style={{ minHeight: 'calc(100vh - 68px)', display: 'flex', flexDirection: 'column' }}>
