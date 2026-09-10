@@ -10,18 +10,20 @@ import {
   Mail,
   Eye,
   EyeOff,
-  Sparkles
+  Sparkles,
+  LayoutDashboard,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './HomePage.css';
 
-const HomePage = ({ onLoginSuccess }) => {
-  const { systemRoles, login } = useAuth();
+const HomePage = ({ onLoginSuccess, onEnterWorkspace }) => {
+  const { systemRoles, login, currentUser, isAuthenticated, logout } = useAuth();
 
   // Selected role for the login form card (defaults to Site Supervisor or Admin)
   const [selectedRoleKey, setSelectedRoleKey] = useState('site_supervisor');
-  const [emailInput, setEmailInput] = useState('supervisor@jalenterprises.lk');
-  const [passwordInput, setPasswordInput] = useState('supervisor2026');
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,9 +35,14 @@ const HomePage = ({ onLoginSuccess }) => {
   // When clicking on a role pill / tab
   const handleSelectRole = (role) => {
     setSelectedRoleKey(role.id);
-    setEmailInput(role.email);
-    setPasswordInput(`${role.id}2026`);
     setLoginMessage(null);
+  };
+
+  const handleEnterWorkspace = (targetTab) => {
+    const tab = targetTab || currentUser?.defaultTab || 'dashboard';
+    if (onEnterWorkspace) {
+      onEnterWorkspace(tab);
+    }
   };
 
   // Form submit login
@@ -49,6 +56,9 @@ const HomePage = ({ onLoginSuccess }) => {
       const user = await login(identifier, passwordInput);
       if (onLoginSuccess) {
         onLoginSuccess(user);
+      }
+      if (onEnterWorkspace) {
+        onEnterWorkspace(user?.defaultTab || 'dashboard');
       }
     } catch (err) {
       setLoginMessage({ type: 'error', text: err.message });
@@ -99,10 +109,49 @@ const HomePage = ({ onLoginSuccess }) => {
           </div>
 
           <div className="home-header-actions">
-            <button className="btn-home-cta" onClick={scrollToLogin}>
-              <Lock size={15} />
-              <span>Sign In</span>
-            </button>
+            {isAuthenticated && currentUser ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="home-user-chip">
+                  <div
+                    className="home-user-avatar"
+                    style={{
+                      background: currentUser.badgeBg || 'rgba(245, 158, 11, 0.2)',
+                      color: currentUser.badgeColor || 'var(--amber-primary)',
+                      border: `1px solid ${currentUser.badgeColor || 'var(--amber-primary)'}40`
+                    }}
+                  >
+                    {currentUser.avatar || 'JL'}
+                  </div>
+                  <div className="home-user-info">
+                    <span className="home-user-name">{currentUser.name}</span>
+                    <span className="home-user-role" style={{ color: currentUser.badgeColor || 'var(--amber-primary)' }}>
+                      {currentUser.roleLabel}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  className="btn-home-cta"
+                  onClick={() => handleEnterWorkspace()}
+                  title="Open operations workspace dashboard"
+                >
+                  <LayoutDashboard size={15} />
+                  <span>Enter Workspace</span>
+                </button>
+                <button
+                  className="btn-home-logout"
+                  onClick={logout}
+                  title="Sign out of current account"
+                >
+                  <LogOut size={14} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            ) : (
+              <button className="btn-home-cta" onClick={scrollToLogin}>
+                <Lock size={15} />
+                <span>Sign In</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -125,10 +174,22 @@ const HomePage = ({ onLoginSuccess }) => {
         </p>
 
         <div className="home-hero-actions">
-          <button className="btn-hero-primary" onClick={scrollToLogin}>
-            <span>Access Role Portal</span>
-            <ArrowRight size={18} />
-          </button>
+          {isAuthenticated && currentUser ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              <button className="btn-hero-primary" onClick={() => handleEnterWorkspace()}>
+                <span>Enter {currentUser.roleLabel || 'Operations'} Workspace</span>
+                <ArrowRight size={18} />
+              </button>
+              <button className="btn-hero-secondary" onClick={scrollToLogin}>
+                <span>Switch Account / Portal</span>
+              </button>
+            </div>
+          ) : (
+            <button className="btn-hero-primary" onClick={scrollToLogin}>
+              <span>Access Role Portal</span>
+              <ArrowRight size={18} />
+            </button>
+          )}
         </div>
       </section>
 
@@ -149,6 +210,32 @@ const HomePage = ({ onLoginSuccess }) => {
         <div className="portal-layout single-column">
           {/* Centered Login Form Card */}
           <div className="portal-login-card centered">
+            {/* Active Session Detected Banner */}
+            {isAuthenticated && currentUser && (
+              <div className="home-active-session-banner">
+                <div className="active-session-badge">
+                  <span className="active-pulse-dot" />
+                  <span>Active Session Detected</span>
+                </div>
+                <div className="active-session-body">
+                  <p>
+                    Logged in as <strong>{currentUser.name}</strong> &bull; {currentUser.roleLabel}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-resume-workspace"
+                    onClick={() => handleEnterWorkspace()}
+                  >
+                    <span>Resume Workspace</span>
+                    <ArrowRight size={15} />
+                  </button>
+                </div>
+                <div className="active-session-divider">
+                  <span>or switch role / sign in with another designation below</span>
+                </div>
+              </div>
+            )}
+
             <div className="login-card-header">
               <div
                 className="login-card-badge"
@@ -162,7 +249,7 @@ const HomePage = ({ onLoginSuccess }) => {
                 <span>{currentRole.roleLabel} Portal</span>
               </div>
               <h3>Sign In to Workspace</h3>
-              <p>Authenticating for <strong>{currentRole.name}</strong> &bull; {currentRole.title}</p>
+              <p>Sign in with your credentials to access <strong>{currentRole.roleLabel}</strong> workspace</p>
             </div>
 
             {/* Role Switcher Pills / Tabs */}
@@ -225,7 +312,7 @@ const HomePage = ({ onLoginSuccess }) => {
                     className="form-input-home"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="e.g. admin or admin@jalenterprises.lk"
+                    placeholder="Enter username or email address"
                     required
                   />
                 </div>
@@ -234,7 +321,7 @@ const HomePage = ({ onLoginSuccess }) => {
               <div className="form-group-home">
                 <label htmlFor="portal-password">
                   <span>Access Password / Passcode</span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--amber-primary)' }}>Demo prefilled</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Required</span>
                 </label>
                 <div className="form-input-wrapper">
                   <Lock size={16} className="input-icon" />
@@ -268,9 +355,6 @@ const HomePage = ({ onLoginSuccess }) => {
                   />
                   <span>Remember session</span>
                 </label>
-                <span style={{ color: 'var(--amber-primary)', cursor: 'pointer' }} onClick={() => handleSelectRole(currentRole)}>
-                  Reset Demo Creds
-                </span>
               </div>
 
               <button

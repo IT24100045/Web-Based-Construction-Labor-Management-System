@@ -17,8 +17,24 @@ import HomePage from './components/home/HomePage';
 import UserManagementView from './components/users/UserManagementView';
 import './App.css';
 
-function MainApp({ initialTab = 'dashboard' }) {
-  const [activeTab, setActiveTab] = useState(initialTab);
+const APP_TABS = ['dashboard', 'users', 'laborers', 'sites', 'attendance', 'wages'];
+
+const getTabFromHash = () => {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash.replace(/^#\/?/, '').trim().toLowerCase();
+  return APP_TABS.includes(hash) ? hash : null;
+};
+
+function MainApp({ activeTab: controlledTab, onTabChange, onReturnToHome }) {
+  const [internalTab, setInternalTab] = useState(controlledTab || 'dashboard');
+  const activeTab = controlledTab !== undefined ? controlledTab : internalTab;
+  const setActiveTab = (tab) => {
+    if (onTabChange) {
+      onTabChange(tab);
+    } else {
+      setInternalTab(tab);
+    }
+  };
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Global quick modals
@@ -63,6 +79,7 @@ function MainApp({ initialTab = 'dashboard' }) {
         setActiveTab={setActiveTab}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
+        onReturnToHome={onReturnToHome}
       />
 
       {/* Main Content Area */}
@@ -70,6 +87,7 @@ function MainApp({ initialTab = 'dashboard' }) {
         <Navbar
           activeTab={activeTab}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+          onReturnToHome={onReturnToHome}
         />
 
         <main style={{ minHeight: 'calc(100vh - 68px)', display: 'flex', flexDirection: 'column' }}>
@@ -120,20 +138,88 @@ function MainApp({ initialTab = 'dashboard' }) {
 function AppContent() {
   const { isAuthenticated, currentUser } = useAuth();
 
-  // If user is not authenticated, render the J A L Enterprises Homepage & Role Login Portal
-  if (!isAuthenticated || !currentUser) {
+  // Determine initial view:
+  // On the index page ('/' or empty/internal hash), always load 'home' (HomePage).
+  // Only load 'app' on mount if URL hash explicitly targets an app tab AND user is authenticated.
+  const [currentView, setCurrentView] = useState(() => {
+    const tabFromHash = getTabFromHash();
+    if (tabFromHash && isAuthenticated) {
+      return 'app';
+    }
+    return 'home';
+  });
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const tabFromHash = getTabFromHash();
+    if (tabFromHash) return tabFromHash;
+    return currentUser?.defaultTab || 'dashboard';
+  });
+
+  // Listen for browser Back/Forward navigation or hash changes
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      const tab = getTabFromHash();
+      if (tab && isAuthenticated) {
+        setActiveTab(tab);
+        setCurrentView('app');
+      } else if (!tab) {
+        // Hash is empty, #home, #overview, #login-portal, etc. -> show HomePage
+        setCurrentView('home');
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [isAuthenticated]);
+
+  // If user logs out while in MainApp, smoothly return to HomePage
+  React.useEffect(() => {
+    if (!isAuthenticated && currentView === 'app') {
+      setCurrentView('home');
+      if (window.location.hash && APP_TABS.includes(window.location.hash.replace(/^#\/?/, ''))) {
+        window.location.hash = '';
+      }
+    }
+  }, [isAuthenticated, currentView]);
+
+  const navigateToApp = (tab) => {
+    const targetTab = tab || currentUser?.defaultTab || activeTab || 'dashboard';
+    setActiveTab(targetTab);
+    setCurrentView('app');
+    window.location.hash = `#${targetTab}`;
+  };
+
+  const navigateToHome = () => {
+    setCurrentView('home');
+    const tab = getTabFromHash();
+    if (tab) {
+      window.location.hash = '';
+    }
+  };
+
+  // If on HomePage (index page)
+  if (currentView === 'home') {
     return (
       <>
-        <HomePage />
+        <HomePage
+          onEnterWorkspace={navigateToApp}
+          onLoginSuccess={(user) => navigateToApp(user?.defaultTab || 'dashboard')}
+        />
         <Toast />
       </>
     );
   }
 
+  // Otherwise render workspace MainApp
   return (
     <MainApp
-      key={currentUser.id}
-      initialTab={currentUser.defaultTab || 'dashboard'}
+      key={currentUser?.id || 'main-app'}
+      activeTab={activeTab}
+      onTabChange={(tab) => {
+        setActiveTab(tab);
+        window.location.hash = `#${tab}`;
+      }}
+      onReturnToHome={navigateToHome}
     />
   );
 }

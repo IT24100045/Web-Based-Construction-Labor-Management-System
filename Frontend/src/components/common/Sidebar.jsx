@@ -7,12 +7,13 @@ import {
   HardHat,
   RefreshCw,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Home
 } from 'lucide-react';
 import { useLabor } from '../../context/LaborContext';
 import { useAuth } from '../../context/AuthContext';
 
-const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
+const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, onReturnToHome }) => {
   const { laborers, sites, refreshAllData, isLoading } = useLabor();
   const { currentUser, logout, usersList } = useAuth();
 
@@ -76,7 +77,12 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
         />
       )}
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
+        <div
+          className="sidebar-header"
+          onClick={onReturnToHome}
+          style={{ cursor: onReturnToHome ? 'pointer' : 'default' }}
+          title={onReturnToHome ? "Return to J A L Enterprises Homepage & Portal" : undefined}
+        >
           <div className="brand-icon">
             <HardHat size={24} />
           </div>
@@ -138,23 +144,41 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: onReturnToHome ? '1fr 1fr' : '1fr', gap: '8px', marginTop: '12px' }}>
+            {onReturnToHome && (
+              <button
+                onClick={onReturnToHome}
+                className="btn btn-secondary btn-sm"
+                style={{
+                  justifyContent: 'center',
+                  gap: '6px',
+                  fontSize: '0.76rem',
+                  padding: '8px 8px',
+                  borderColor: 'var(--border-medium)',
+                  background: 'rgba(7, 11, 20, 0.6)'
+                }}
+                title="Return to J A L Enterprises Homepage & Portal"
+              >
+                <Home size={14} />
+                <span>Portal</span>
+              </button>
+            )}
             <button
               onClick={logout}
               className="btn btn-secondary btn-sm"
               style={{
-                width: '100%',
                 justifyContent: 'center',
-                gap: '8px',
-                fontSize: '0.78rem',
-                padding: '8px 12px',
+                gap: '6px',
+                fontSize: '0.76rem',
+                padding: '8px 8px',
                 borderColor: 'var(--border-medium)',
-                background: 'rgba(7, 11, 20, 0.6)'
+                background: 'rgba(7, 11, 20, 0.6)',
+                color: 'var(--rose)'
               }}
-              title="Return to J A L Enterprises Homepage & Portal"
+              title="Sign out of current account"
             >
               <LogOut size={14} />
-              <span>Exit to Portal</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
