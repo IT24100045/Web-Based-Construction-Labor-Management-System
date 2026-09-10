@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, Calendar, Clock, LogOut, ChevronDown, ShieldCheck, HardHat, Building2, Users, Receipt } from 'lucide-react';
+import { Menu, Calendar, Clock, LogOut, ChevronDown, ShieldCheck, HardHat, Building2, Users, Receipt, KeyRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import ChangePasswordModal from '../users/ChangePasswordModal';
 
 const Navbar = ({ activeTab, onToggleSidebar }) => {
   const { currentUser, logout } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -72,7 +74,8 @@ const Navbar = ({ activeTab, onToggleSidebar }) => {
   });
 
   return (
-    <header className="top-navbar">
+    <>
+      <header className="top-navbar">
       <div className="nav-left">
         <button
           className="mobile-toggle-btn"
@@ -221,8 +224,35 @@ const Navbar = ({ activeTab, onToggleSidebar }) => {
                 )}
               </div>
 
-              {/* Logout Action */}
-              <div style={{ paddingTop: '8px' }}>
+              {/* Profile & Account Actions */}
+              <div style={{ paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <button
+                  onClick={() => {
+                    setShowRoleDropdown(false);
+                    setShowPasswordModal(true);
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    color: 'var(--amber-primary)',
+                    cursor: 'pointer',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    transition: 'background 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(245, 158, 11, 0.16)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(245, 158, 11, 0.08)')}
+                >
+                  <KeyRound size={14} />
+                  <span>Change Password</span>
+                </button>
+
                 <button
                   onClick={() => {
                     setShowRoleDropdown(false);
@@ -255,6 +285,13 @@ const Navbar = ({ activeTab, onToggleSidebar }) => {
         </div>
       </div>
     </header>
+
+    {/* Change Password Modal */}
+    <ChangePasswordModal
+      isOpen={showPasswordModal}
+      onClose={() => setShowPasswordModal(false)}
+    />
+  </>
   );
 };
 

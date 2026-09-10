@@ -201,6 +201,37 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// PUT /api/users/:id/change-password - Change user password
+router.put('/:id/change-password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword || newPassword.trim().length < 4) {
+      return res.status(400).json({ error: 'New password must be at least 4 characters long' });
+    }
+
+    const [userRows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
+    if (!userRows || userRows.length === 0) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    const user = userRows[0];
+
+    // Verify current password if current user has an existing password in database
+    if (user.password && currentPassword && user.password !== currentPassword.trim()) {
+      return res.status(400).json({ error: 'Current password does not match our records' });
+    }
+
+    await pool.query('UPDATE users SET password = ? WHERE id = ?', [newPassword.trim(), id]);
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    console.error('Error changing user password:', err);
+    res.status(500).json({ error: 'Failed to update password' });
+  }
+});
+
 function getDefaultTitleForRole(role) {
   switch (role) {
     case 'admin':

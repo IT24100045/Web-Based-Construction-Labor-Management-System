@@ -123,6 +123,12 @@ export const usersApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     }).then(handleResponse),
+  changePassword: (id, data) =>
+    fetch(`${API_BASE}/users/${id}/change-password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(handleResponse),
   delete: (id) =>
     fetch(`${API_BASE}/users/${id}`, {
       method: 'DELETE'
