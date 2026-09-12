@@ -367,7 +367,7 @@ const CalculatedWagesView = () => {
                           <button
                             className="btn btn-secondary btn-sm"
                             onClick={() => setReceiptModalData({ isOpen: true, payment: p, wage })}
-                            title="View / Print Payment Voucher"
+                            title="View Payment Voucher" /* Sprint 2: Restore "View / Print Payment Voucher" when printing is enabled */
                           >
                             <FileCheck size={14} /> Voucher
                           </button>

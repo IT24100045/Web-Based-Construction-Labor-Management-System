@@ -1,6 +1,7 @@
 import React from 'react';
 import Modal from '../common/Modal';
-import { Printer, CheckCircle2, Building2, HardHat } from 'lucide-react';
+/* Sprint 2: Re-enable Printer icon when printing feature is restored */
+import { /* Printer, */ CheckCircle2, Building2, HardHat } from 'lucide-react';
 
 const PaymentReceiptModal = ({ isOpen, onClose, payment, laborerWage }) => {
   if (!isOpen || !payment) return null;
@@ -8,9 +9,11 @@ const PaymentReceiptModal = ({ isOpen, onClose, payment, laborerWage }) => {
   const laborer = laborerWage?.laborer;
   const site = laborerWage?.assignedSite;
 
+  /* Sprint 2: Printing feature temporarily disabled - re-enable in Sprint 2
   const handlePrint = () => {
     window.print();
   };
+  */
 
   return (
     <Modal
@@ -104,9 +107,11 @@ const PaymentReceiptModal = ({ isOpen, onClose, payment, laborerWage }) => {
       </div>
 
       <div className="modal-footer" style={{ margin: '16px -24px -24px -24px' }}>
+        {/* Sprint 2: Printing feature temporarily disabled - uncomment below to restore
         <button type="button" className="btn btn-secondary" onClick={handlePrint}>
           <Printer size={16} /> Print Official Voucher
         </button>
+        */}
         <button type="button" className="btn btn-primary" onClick={onClose}>
           Done
         </button>
