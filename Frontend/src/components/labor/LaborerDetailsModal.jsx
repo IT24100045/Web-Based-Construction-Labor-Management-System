@@ -62,8 +62,7 @@ const LaborerDetailsModal = ({ isOpen, onClose, laborer, onOpenEdit, onRecordPay
             </span>
           </div>
           <div style={{ display: 'flex', gap: '16px', marginTop: '6px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-            <span><strong>ID:</strong> {laborer.id}</span>
-            <span><strong>NIC:</strong> {laborer.nic}</span>
+            <span><strong>EMP ID:</strong> {laborer.id}</span>
             <span><strong>Joined:</strong> {laborer.joinDate}</span>
           </div>
         </div>

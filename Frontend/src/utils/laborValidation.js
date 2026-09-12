@@ -57,18 +57,6 @@ export const validateLaborerField = (field, value, context = {}) => {
     }
 
     case 'nic': {
-      if (!strVal) return 'National Identity Card (NIC) or Employee ID is required.';
-      if (!NIC_REGEX.test(strVal)) {
-        return 'Invalid format. Use 9 digits + V/X (e.g., 924567890V), 12 digits (e.g., 199245678901), or EMP-XXX.';
-      }
-      // Check uniqueness against existing laborers
-      const upperNic = strVal.toUpperCase();
-      const duplicate = existingLaborers.find(
-        (l) => l.id !== currentLaborerId && l.nic && l.nic.trim().toUpperCase() === upperNic
-      );
-      if (duplicate) {
-        return `This NIC is already registered to ${duplicate.name} (${duplicate.id}).`;
-      }
       return '';
     }
 
@@ -168,7 +156,6 @@ export const validateLaborerField = (field, value, context = {}) => {
 export const validateLaborerForm = (form, context = {}) => {
   const fieldsToValidate = [
     'name',
-    'nic',
     'phone',
     'email',
     'hourlyRate',

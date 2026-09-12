@@ -226,7 +226,7 @@ const DailyAttendanceSheet = ({
                         <div className="worker-avatar">{worker.name.charAt(0)}</div>
                         <div className="worker-name-block">
                           <span className="worker-name">{worker.name}</span>
-                          <span className="worker-nic">{worker.nic}</span>
+                          <span className="worker-nic">{worker.id}</span>
                         </div>
                       </div>
                     </td>

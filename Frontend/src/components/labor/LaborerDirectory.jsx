@@ -47,7 +47,7 @@ const LaborerDirectory = ({ onRecordPaymentForLaborer }) => {
     return laborers.filter((lab) => {
       const matchesSearch =
         lab.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lab.nic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (lab.id && lab.id.toLowerCase().includes(searchTerm.toLowerCase())) ||
         lab.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lab.role.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -132,7 +132,7 @@ const LaborerDirectory = ({ onRecordPaymentForLaborer }) => {
           <input
             type="text"
             className="form-control"
-            placeholder="Search by worker name, NIC number, phone, or trade..."
+            placeholder="Search by worker name, EMP ID, phone, or trade..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -232,7 +232,7 @@ const LaborerDirectory = ({ onRecordPaymentForLaborer }) => {
                         </div>
                         <div className="worker-name-block">
                           <span className="worker-name">{lab.name}</span>
-                          <span className="worker-nic">NIC: {lab.nic} &bull; {lab.id}</span>
+                          <span className="worker-nic">EMP ID: {lab.id}</span>
                         </div>
                       </div>
                     </td>

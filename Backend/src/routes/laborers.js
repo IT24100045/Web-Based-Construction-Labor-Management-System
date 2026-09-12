@@ -30,7 +30,26 @@ router.get('/', async (req, res) => {
   }
 });
 
-const NIC_REGEX = /^([0-9]{9}[vVxX]|[0-9]{12}|EMP-[0-9]{3,6})$/i;
+// GET /api/laborers/next-id
+router.get('/next-id', async (req, res) => {
+  try {
+    const allLaborers = await query('SELECT id FROM laborers');
+    let maxNum = 0;
+    for (const row of allLaborers) {
+      const match = (row.id || '').match(/^EMP-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    }
+    const nextId = `EMP-${String(maxNum + 1).padStart(3, '0')}`;
+    res.json({ nextId });
+  } catch (err) {
+    console.error('Error getting next laborer ID:', err);
+    res.status(500).json({ error: 'Failed to get next ID' });
+  }
+});
+
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 // POST /api/laborers
@@ -38,7 +57,6 @@ router.post('/', async (req, res) => {
   try {
     const {
       name,
-      nic,
       phone = '',
       email = '',
       address = '',
@@ -52,7 +70,6 @@ router.post('/', async (req, res) => {
     } = req.body;
 
     const trimmedName = (name || '').trim();
-    const trimmedNic = (nic || '').trim().toUpperCase();
     const trimmedPhone = (phone || '').trim();
     const trimmedEmail = (email || '').trim().toLowerCase();
     const trimmedEmergency = (emergencyContact || '').trim();
@@ -61,10 +78,6 @@ router.post('/', async (req, res) => {
     // Validation rules
     if (!trimmedName || trimmedName.length < 3) {
       return res.status(400).json({ error: 'Full name is required and must be at least 3 characters long.' });
-    }
-
-    if (!trimmedNic || !NIC_REGEX.test(trimmedNic)) {
-      return res.status(400).json({ error: 'Valid NIC (9 digits + V/X, 12 digits) or EMP-XXX is required.' });
     }
 
     const phoneDigits = trimmedPhone.replace(/[^0-9]/g, '');
@@ -88,17 +101,17 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Emergency contact details are required for occupational safety compliance.' });
     }
 
-    // Check duplicate NIC
-    const [existingNicRows] = await query('SELECT id, name FROM laborers WHERE UPPER(nic) = ? LIMIT 1', [trimmedNic]);
-    if (existingNicRows && existingNicRows.length > 0) {
-      return res.status(409).json({
-        error: `A laborer with NIC "${trimmedNic}" is already registered (${existingNicRows[0].name}).`
-      });
+    // Auto-generate unique EMP-XXX ID (e.g. EMP-001, EMP-002...)
+    const allLaborers = await query('SELECT id FROM laborers');
+    let maxNum = 0;
+    for (const row of allLaborers) {
+      const match = (row.id || '').match(/^EMP-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
     }
-
-    // Generate unique ID e.g. LAB-101
-    const [countResult] = await query('SELECT COUNT(*) as cnt FROM laborers');
-    const newId = `LAB-${String(countResult.cnt + 101).padStart(3, '0')}`;
+    const newId = `EMP-${String(maxNum + 1).padStart(3, '0')}`;
 
     await query(`
       INSERT INTO laborers (
@@ -108,7 +121,7 @@ router.post('/', async (req, res) => {
     `, [
       newId,
       trimmedName,
-      trimmedNic,
+      newId, // Store EMP ID in nic column for backwards compatibility
       trimmedPhone,
       trimmedEmail,
       (address || '').trim(),
@@ -135,9 +148,6 @@ router.post('/', async (req, res) => {
     res.status(201).json(created);
   } catch (err) {
     console.error('Error creating laborer:', err);
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ error: 'A laborer with this NIC number already exists' });
-    }
     res.status(500).json({ error: 'Failed to create laborer' });
   }
 });
@@ -167,7 +177,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const trimmedName = name !== undefined ? name.trim() : existing.name;
-    const trimmedNic = nic !== undefined ? nic.trim().toUpperCase() : existing.nic;
+    const trimmedNic = nic !== undefined ? (nic ? nic.trim().toUpperCase() : existing.id) : existing.nic;
     const trimmedPhone = phone !== undefined ? phone.trim() : existing.phone;
     const trimmedEmail = email !== undefined ? email.trim().toLowerCase() : existing.email;
     const trimmedAddress = address !== undefined ? address.trim() : existing.address;
@@ -180,10 +190,6 @@ router.put('/:id', async (req, res) => {
     // Validation checks on updated fields
     if (name !== undefined && (!trimmedName || trimmedName.length < 3)) {
       return res.status(400).json({ error: 'Full name must be at least 3 characters long.' });
-    }
-
-    if (nic !== undefined && (!trimmedNic || !NIC_REGEX.test(trimmedNic))) {
-      return res.status(400).json({ error: 'Valid NIC (9 digits + V/X, 12 digits) or EMP-XXX is required.' });
     }
 
     if (phone !== undefined) {
@@ -203,19 +209,6 @@ router.put('/:id', async (req, res) => {
 
     if (emergencyContact !== undefined && (!trimmedEmergency || trimmedEmergency.length < 5)) {
       return res.status(400).json({ error: 'Emergency contact details are required for safety compliance.' });
-    }
-
-    // Check duplicate NIC against other laborers
-    if (nic !== undefined && trimmedNic !== existing.nic) {
-      const [duplicate] = await query('SELECT id, name FROM laborers WHERE UPPER(nic) = ? AND id != ? LIMIT 1', [
-        trimmedNic,
-        id
-      ]);
-      if (duplicate && duplicate.length > 0) {
-        return res.status(409).json({
-          error: `Another laborer with NIC "${trimmedNic}" already exists (${duplicate[0].name}).`
-        });
-      }
     }
 
     await query(`

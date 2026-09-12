@@ -21,7 +21,7 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
   const filteredLaborers = laborers.filter((l) =>
     l.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
     l.role.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    (l.nic && l.nic.toLowerCase().includes(searchFilter.toLowerCase()))
+    (l.id && l.id.toLowerCase().includes(searchFilter.toLowerCase()))
   );
 
   const handleSelectAll = () => {
@@ -94,7 +94,7 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
       <div style={{ display: 'flex', gap: '10px', marginBottom: '14px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <input
           type="text"
-          placeholder="Filter workers by name, role, or NIC..."
+          placeholder="Filter workers by name, role, or EMP ID..."
           value={searchFilter}
           onChange={(e) => setSearchFilter(e.target.value)}
           disabled={isSaving}
@@ -146,7 +146,7 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
                       {lab.name}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      {lab.role} &bull; <span style={{ fontFamily: 'var(--font-mono)' }}>{lab.nic}</span>
+                      {lab.role} &bull; <span style={{ fontFamily: 'var(--font-mono)' }}>{lab.id}</span>
                     </div>
                   </div>
                 </div>

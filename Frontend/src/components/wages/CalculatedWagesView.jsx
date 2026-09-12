@@ -45,7 +45,7 @@ const CalculatedWagesView = () => {
   const filteredWages = calculatedWages.filter((w) => {
     const matchesSearch =
       w.laborer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      w.laborer.nic.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (w.laborer.id && w.laborer.id.toLowerCase().includes(searchTerm.toLowerCase())) ||
       w.laborer.role.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesSite =
@@ -163,7 +163,7 @@ const CalculatedWagesView = () => {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Search by worker name, NIC, or trade..."
+                placeholder="Search by worker name, EMP ID, or trade..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />

@@ -40,7 +40,7 @@ const PaymentReceiptModal = ({ isOpen, onClose, payment, laborerWage }) => {
             <strong style={{ fontSize: '1rem', color: '#fff' }}>{laborer ? laborer.name : payment.laborerId}</strong>
             <div style={{ color: 'var(--amber-primary)', fontSize: '0.82rem' }}>{laborer ? laborer.role : ''}</div>
             <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', fontFamily: 'var(--font-mono)' }}>
-              NIC: {laborer ? laborer.nic : 'N/A'}
+              EMP ID: {laborer ? laborer.id : (payment?.laborerId || 'N/A')}
             </div>
           </div>
 

@@ -5,7 +5,6 @@ import { JOB_ROLES, SKILL_LEVELS } from '../../utils/mockData';
 import {
   validateLaborerField,
   validateLaborerForm,
-  identifyNicFormat,
   MIN_HOURLY_RATE,
   MAX_HOURLY_RATE
 } from '../../utils/laborValidation';
@@ -14,7 +13,6 @@ import { Save, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
 const EditLaborerForm = ({ laborer, sites, existingLaborers, updateLaborer, onClose }) => {
   const [form, setForm] = useState(() => ({
     name: laborer.name || '',
-    nic: laborer.nic || '',
     phone: laborer.phone || '',
     email: laborer.email || '',
     address: laborer.address || '',
@@ -31,8 +29,6 @@ const EditLaborerForm = ({ laborer, sites, existingLaborers, updateLaborer, onCl
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
-  const nicMeta = identifyNicFormat(form.nic);
-
   const validationContext = {
     existingLaborers,
     currentLaborerId: laborer.id
@@ -40,13 +36,11 @@ const EditLaborerForm = ({ laborer, sites, existingLaborers, updateLaborer, onCl
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const formattedValue = name === 'nic' ? value.toUpperCase().trim() : value;
-
-    setForm((prev) => ({ ...prev, [name]: formattedValue }));
+    setForm((prev) => ({ ...prev, [name]: value }));
     if (submitError) setSubmitError(null);
 
     if (touched[name]) {
-      const error = validateLaborerField(name, formattedValue, validationContext);
+      const error = validateLaborerField(name, value, validationContext);
       setErrors((prev) => ({
         ...prev,
         [name]: error
@@ -56,9 +50,8 @@ const EditLaborerForm = ({ laborer, sites, existingLaborers, updateLaborer, onCl
 
   const handleBlur = (e) => {
     const { name, value } = e.target;
-    const formattedValue = name === 'nic' ? value.toUpperCase().trim() : value;
     setTouched((prev) => ({ ...prev, [name]: true }));
-    const error = validateLaborerField(name, formattedValue, validationContext);
+    const error = validateLaborerField(name, value, validationContext);
     setErrors((prev) => ({
       ...prev,
       [name]: error
@@ -73,7 +66,6 @@ const EditLaborerForm = ({ laborer, sites, existingLaborers, updateLaborer, onCl
 
     setTouched({
       name: true,
-      nic: true,
       phone: true,
       email: true,
       address: true,
@@ -94,7 +86,6 @@ const EditLaborerForm = ({ laborer, sites, existingLaborers, updateLaborer, onCl
       await updateLaborer(laborer.id, {
         ...form,
         name: form.name.trim(),
-        nic: form.nic.trim().toUpperCase(),
         phone: form.phone.trim(),
         email: form.email.trim(),
         address: form.address.trim(),
@@ -194,44 +185,28 @@ const EditLaborerForm = ({ laborer, sites, existingLaborers, updateLaborer, onCl
           )}
         </div>
 
-        {/* NIC / Employee ID */}
+        {/* Employee ID (Read-only) */}
         <div className="form-group">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <label className="form-label" htmlFor="edit-nic">
-              NIC / Employee ID <span className="required">*</span>
-            </label>
-            {nicMeta && nicMeta.valid && (
-              <span
-                style={{
-                  fontSize: '0.68rem',
-                  padding: '1px 6px',
-                  borderRadius: '4px',
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  color: '#34d399',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  fontWeight: 600
-                }}
-              >
-                {nicMeta.label}
-              </span>
-            )}
-          </div>
+          <label className="form-label" htmlFor="edit-empid">
+            Employee ID
+          </label>
           <input
-            id="edit-nic"
+            id="edit-empid"
             type="text"
-            name="nic"
-            value={form.nic}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            className={`form-control ${getValidationClass('nic')}`}
-            required
-            maxLength={15}
+            value={laborer.id}
+            readOnly
+            disabled
+            className="form-control"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 700,
+              color: 'var(--amber-light)',
+              background: 'rgba(245, 158, 11, 0.08)',
+              borderColor: 'rgba(245, 158, 11, 0.3)',
+              cursor: 'not-allowed'
+            }}
           />
-          {touched.nic && errors.nic ? (
-            <span className="form-error-msg"><AlertCircle size={13} /> {errors.nic}</span>
-          ) : (
-            <span className="form-hint">Accepted: 12-digit Smart NIC, 9-digit+V/X, or EMP-XXX</span>
-          )}
+          <span className="form-hint">Unique system-assigned identifier (immutable)</span>
         </div>
       </div>
 

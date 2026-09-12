@@ -357,7 +357,7 @@ const RecordPaymentWrapper = ({ laborer, onClose, onSuccessPayment }) => {
           >
             {laborers.map((lab) => (
               <option key={lab.id} value={lab.id}>
-                {lab.name} — {lab.role} ({lab.nic})
+                {lab.name} — {lab.role} ({lab.id})
               </option>
             ))}
           </select>

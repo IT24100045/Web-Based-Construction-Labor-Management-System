@@ -78,7 +78,7 @@ export const SYSTEM_ROLES = [
     allowedTabs: ['laborers', 'attendance', 'wages'],
     responsibilities: [
       'Onboard and register new construction laborers',
-      'Maintain verified NIC, contact, and emergency records',
+      'Maintain verified employee directory, contact, and emergency records',
       'Classify skill levels and establish trade hourly rates',
       'Manage workforce directory and worker documentation'
     ],

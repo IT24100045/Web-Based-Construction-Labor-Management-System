@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Modal from '../common/Modal';
 import { useLabor } from '../../context/LaborContext';
 import { JOB_ROLES, SKILL_LEVELS } from '../../utils/mockData';
 import {
   validateLaborerField,
   validateLaborerForm,
-  identifyNicFormat,
   MIN_HOURLY_RATE,
   MAX_HOURLY_RATE
 } from '../../utils/laborValidation';
@@ -14,9 +13,21 @@ import { UserCheck, AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react'
 const AddLaborerModal = ({ isOpen, onClose }) => {
   const { addLaborer, sites, laborers } = useLabor();
 
+  // Auto-generate next Employee ID (EMP-001, EMP-002...)
+  const nextEmpId = useMemo(() => {
+    let maxNum = 0;
+    (laborers || []).forEach((lab) => {
+      const match = (lab?.id || '').match(/^EMP-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+    return `EMP-${String(maxNum + 1).padStart(3, '0')}`;
+  }, [laborers]);
+
   const initialForm = {
     name: '',
-    nic: '',
     phone: '',
     email: '',
     address: '',
@@ -33,18 +44,13 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
-  const nicMeta = identifyNicFormat(form.nic);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Auto format NIC to uppercase
-    const formattedValue = name === 'nic' ? value.toUpperCase().trim() : value;
-
-    setForm((prev) => ({ ...prev, [name]: formattedValue }));
+    setForm((prev) => ({ ...prev, [name]: value }));
     if (submitError) setSubmitError(null);
 
     if (touched[name]) {
-      const error = validateLaborerField(name, formattedValue, { existingLaborers: laborers });
+      const error = validateLaborerField(name, value, { existingLaborers: laborers });
       setErrors((prev) => ({
         ...prev,
         [name]: error
@@ -54,9 +60,8 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
 
   const handleBlur = (e) => {
     const { name, value } = e.target;
-    const formattedValue = name === 'nic' ? value.toUpperCase().trim() : value;
     setTouched((prev) => ({ ...prev, [name]: true }));
-    const error = validateLaborerField(name, formattedValue, { existingLaborers: laborers });
+    const error = validateLaborerField(name, value, { existingLaborers: laborers });
     setErrors((prev) => ({
       ...prev,
       [name]: error
@@ -72,7 +77,6 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
 
     setTouched({
       name: true,
-      nic: true,
       phone: true,
       email: true,
       address: true,
@@ -92,7 +96,6 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
       await addLaborer({
         ...form,
         name: form.name.trim(),
-        nic: form.nic.trim().toUpperCase(),
         phone: form.phone.trim(),
         email: form.email.trim(),
         address: form.address.trim(),
@@ -134,7 +137,7 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
         {/* Compliance Notice */}
         <div style={{ marginBottom: '16px', background: 'rgba(245, 158, 11, 0.08)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.84rem', color: 'var(--amber-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <ShieldAlert size={16} style={{ flexShrink: 0 }} />
-          <span>Please verify the laborer's National Identity Card (NIC) and emergency contact for occupational site compliance.</span>
+          <span>Please ensure the laborer's valid contact and emergency details for occupational site compliance.</span>
         </div>
 
         {/* Server / Form Submit Error Notice */}
@@ -189,45 +192,44 @@ const AddLaborerModal = ({ isOpen, onClose }) => {
             {!touched.name && <span className="form-hint">Legal name as stated on identification document</span>}
           </div>
 
-          {/* NIC / Employee ID */}
+          {/* Auto-Generated Employee ID */}
           <div className="form-group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="form-label" htmlFor="laborer-nic">
-                NIC / Employee ID <span className="required">*</span>
+              <label className="form-label" htmlFor="laborer-empid">
+                Employee ID <span style={{ color: 'var(--amber-primary)', fontSize: '0.72rem', fontWeight: 600 }}>AUTO-ASSIGNED</span>
               </label>
-              {nicMeta && nicMeta.valid && (
-                <span
-                  style={{
-                    fontSize: '0.68rem',
-                    padding: '1px 6px',
-                    borderRadius: '4px',
-                    background: 'rgba(16, 185, 129, 0.15)',
-                    color: '#34d399',
-                    border: '1px solid rgba(16, 185, 129, 0.3)',
-                    fontWeight: 600
-                  }}
-                >
-                  {nicMeta.label}
-                </span>
-              )}
+              <span
+                style={{
+                  fontSize: '0.68rem',
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  color: 'var(--amber-light)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  fontWeight: 600
+                }}
+              >
+                System Sequenced
+              </span>
             </div>
             <input
-              id="laborer-nic"
+              id="laborer-empid"
               type="text"
-              name="nic"
-              placeholder="e.g. 199245678901 or 924567890V"
-              value={form.nic}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className={`form-control ${getValidationClass('nic')}`}
-              required
-              maxLength={15}
+              name="empId"
+              value={nextEmpId}
+              readOnly
+              disabled
+              className="form-control"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 700,
+                color: 'var(--amber-light)',
+                background: 'rgba(245, 158, 11, 0.08)',
+                borderColor: 'rgba(245, 158, 11, 0.3)',
+                cursor: 'not-allowed'
+              }}
             />
-            {touched.nic && errors.nic ? (
-              <span className="form-error-msg"><AlertCircle size={13} /> {errors.nic}</span>
-            ) : (
-              <span className="form-hint">Accepted: 12-digit Smart NIC, 9-digit+V/X, or EMP-XXX</span>
-            )}
+            <span className="form-hint">Automatically incremented as EMP-001, EMP-002, etc.</span>
           </div>
         </div>
 

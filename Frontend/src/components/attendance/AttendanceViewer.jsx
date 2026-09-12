@@ -37,7 +37,7 @@ const AttendanceViewer = () => {
 
       const matchesSearch =
         (laborer && laborer.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (laborer && laborer.nic.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (laborer && laborer.id.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (site && site.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (rec.otReason && rec.otReason.toLowerCase().includes(searchTerm.toLowerCase())) ||
         rec.date.includes(searchTerm);
@@ -151,7 +151,7 @@ const AttendanceViewer = () => {
           <input
             type="text"
             className="form-control"
-            placeholder="Search records by worker, NIC, site, or overtime reason..."
+            placeholder="Search records by worker, EMP ID, site, or overtime reason..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

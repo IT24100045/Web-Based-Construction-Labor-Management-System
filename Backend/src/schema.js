@@ -24,7 +24,7 @@ async function initializeSchema() {
     `CREATE TABLE IF NOT EXISTS laborers (
       id VARCHAR(50) PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
-      nic VARCHAR(50) NOT NULL UNIQUE,
+      nic VARCHAR(50) DEFAULT NULL,
       phone VARCHAR(50) DEFAULT '',
       email VARCHAR(100) DEFAULT '',
       address TEXT,
@@ -91,6 +91,27 @@ async function initializeSchema() {
 
   for (const q of queries) {
     await pool.query(q);
+  }
+
+  // Migration: Relax nic column and migrate legacy LAB IDs to EMP IDs
+  try {
+    await pool.query('ALTER TABLE laborers MODIFY nic VARCHAR(50) DEFAULT NULL');
+  } catch (e) {
+    // Column might already be nullable
+  }
+
+  try {
+    await pool.query('ALTER TABLE laborers DROP INDEX nic');
+  } catch (e) {
+    // Index might not exist or already dropped
+  }
+
+  try {
+    await pool.query("UPDATE laborers SET id = 'EMP-001' WHERE id = 'LAB-102'");
+    await pool.query("UPDATE attendance SET laborer_id = 'EMP-001' WHERE laborer_id = 'LAB-102'");
+    await pool.query("UPDATE payments SET laborer_id = 'EMP-001' WHERE laborer_id = 'LAB-102'");
+  } catch (e) {
+    console.warn('[Migration] Note on migrating LAB-102:', e.message);
   }
 
   // Seed default demo user accounts if they don't already exist
