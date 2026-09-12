@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import {
   HardHat,
-  Building2,
-  Users,
-  Receipt,
   ShieldCheck,
   ArrowRight,
   Lock,
   Mail,
   Eye,
   EyeOff,
-  Sparkles,
   LayoutDashboard,
   LogOut
 } from 'lucide-react';
@@ -18,25 +14,14 @@ import { useAuth } from '../../context/AuthContext';
 import './HomePage.css';
 
 const HomePage = ({ onLoginSuccess, onEnterWorkspace }) => {
-  const { systemRoles, login, currentUser, isAuthenticated, logout } = useAuth();
+  const { login, currentUser, isAuthenticated, logout } = useAuth();
 
-  // Selected role for the login form card (defaults to Site Supervisor or Admin)
-  const [selectedRoleKey, setSelectedRoleKey] = useState('site_supervisor');
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginMessage, setLoginMessage] = useState(null);
-
-  // Active role object
-  const currentRole = systemRoles.find((r) => r.id === selectedRoleKey) || systemRoles[0];
-
-  // When clicking on a role pill / tab
-  const handleSelectRole = (role) => {
-    setSelectedRoleKey(role.id);
-    setLoginMessage(null);
-  };
 
   const handleEnterWorkspace = (targetTab) => {
     const tab = targetTab || currentUser?.defaultTab || 'dashboard';
@@ -52,7 +37,7 @@ const HomePage = ({ onLoginSuccess, onEnterWorkspace }) => {
     setLoginMessage(null);
 
     try {
-      const identifier = emailInput.trim() || selectedRoleKey;
+      const identifier = emailInput.trim();
       const user = await login(identifier, passwordInput);
       if (onLoginSuccess) {
         onLoginSuccess(user);
@@ -63,23 +48,6 @@ const HomePage = ({ onLoginSuccess, onEnterWorkspace }) => {
     } catch (err) {
       setLoginMessage({ type: 'error', text: err.message });
       setIsSubmitting(false);
-    }
-  };
-
-  const getRoleIcon = (roleId, size = 18) => {
-    switch (roleId) {
-      case 'admin':
-        return <ShieldCheck size={size} />;
-      case 'project_manager':
-        return <Building2 size={size} />;
-      case 'site_supervisor':
-        return <HardHat size={size} />;
-      case 'hr_manager':
-        return <Users size={size} />;
-      case 'payroll_officer':
-        return <Receipt size={size} />;
-      default:
-        return <HardHat size={size} />;
     }
   };
 
@@ -156,54 +124,16 @@ const HomePage = ({ onLoginSuccess, onEnterWorkspace }) => {
         </div>
       </header>
 
-      {/* --- Hero Section --- */}
-      <section className="home-hero" id="overview">
-        <div className="home-hero-badge">
-          <Sparkles size={14} />
-          <span>Construction Industry Workforce Management • Sri Lanka</span>
-        </div>
-
-        <h1 className="home-hero-title">
-          Precision Labour & Workforce Management for <span className="highlight">J A L Enterprises</span>
-        </h1>
-
-        <p className="home-hero-desc">
-          An enterprise digital platform uniting Project Managers, Field Site Supervisors, 
-          HR Officers, and Payroll Accountants. Streamlining dynamic worker allocations, real-time daily muster rolls, 
-          transparent 1.5x overtime wage calculations, and verified disbursement vouchers.
-        </p>
-
-        <div className="home-hero-actions">
-          {isAuthenticated && currentUser ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-              <button className="btn-hero-primary" onClick={() => handleEnterWorkspace()}>
-                <span>Enter {currentUser.roleLabel || 'Operations'} Workspace</span>
-                <ArrowRight size={18} />
-              </button>
-              <button className="btn-hero-secondary" onClick={scrollToLogin}>
-                <span>Switch Account / Portal</span>
-              </button>
-            </div>
-          ) : (
-            <button className="btn-hero-primary" onClick={scrollToLogin}>
-              <span>Access Role Portal</span>
-              <ArrowRight size={18} />
-            </button>
-          )}
-        </div>
-      </section>
-
-      {/* --- Role Login Portal Section --- */}
+      {/* --- Login Portal Section --- */}
       <section className="home-portal-section" id="login-portal">
         <div className="section-header">
           <div className="section-badge">
             <Lock size={13} />
             <span>Enterprise Gateway</span>
           </div>
-          <h2 className="section-title">Role-Based Access Portal</h2>
+          <h2 className="section-title">Sign In to Your Workspace</h2>
           <p className="section-subtitle">
-            Choose your organizational designation to log in. Each role provides specialized workflows, 
-            tailored operational tabs, and granular permissions designed for J A L Enterprises.
+            Secure access for J A L Enterprises personnel. Enter your credentials to access your authorized workspace.
           </p>
         </div>
 
@@ -231,55 +161,18 @@ const HomePage = ({ onLoginSuccess, onEnterWorkspace }) => {
                   </button>
                 </div>
                 <div className="active-session-divider">
-                  <span>or switch role / sign in with another designation below</span>
+                  <span>or switch account / sign in below</span>
                 </div>
               </div>
             )}
 
             <div className="login-card-header">
-              <div
-                className="login-card-badge"
-                style={{
-                  background: currentRole.badgeBg,
-                  color: currentRole.badgeColor,
-                  border: `1px solid ${currentRole.badgeColor}40`
-                }}
-              >
-                {getRoleIcon(currentRole.id, 15)}
-                <span>{currentRole.roleLabel} Portal</span>
+              <div className="login-card-badge">
+                <Lock size={14} />
+                <span>Enterprise Portal</span>
               </div>
               <h3>Sign In to Workspace</h3>
-              <p>Sign in with your credentials to access <strong>{currentRole.roleLabel}</strong> workspace</p>
-            </div>
-
-            {/* Role Switcher Pills / Tabs */}
-            <div className="role-pills-row" title="Select your role">
-              {systemRoles.map((role) => {
-                const isActive = selectedRoleKey === role.id;
-                return (
-                  <button
-                    key={role.id}
-                    type="button"
-                    className={`role-pill ${isActive ? 'active' : ''}`}
-                    onClick={() => handleSelectRole(role)}
-                    style={
-                      isActive
-                        ? {
-                            background: role.badgeBg,
-                            borderColor: role.badgeColor,
-                            color: role.badgeColor,
-                            boxShadow: `0 0 12px ${role.badgeColor}30`
-                          }
-                        : {}
-                    }
-                  >
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                      {getRoleIcon(role.id, 14)}
-                      <span>{role.roleLabel}</span>
-                    </span>
-                  </button>
-                );
-              })}
+              <p>Enter your credentials to access your operations workspace</p>
             </div>
 
             {loginMessage && (
@@ -361,15 +254,12 @@ const HomePage = ({ onLoginSuccess, onEnterWorkspace }) => {
                 type="submit"
                 className="btn-submit-login"
                 disabled={isSubmitting}
-                style={{
-                  background: `linear-gradient(135deg, ${currentRole.badgeColor} 0%, var(--amber-hover) 100%)`
-                }}
               >
                 {isSubmitting ? (
                   <span>Authenticating...</span>
                 ) : (
                   <>
-                    <span>Enter {currentRole.roleLabel} Workspace</span>
+                    <span>Enter Workspace</span>
                     <ArrowRight size={17} />
                   </>
                 )}
