@@ -71,8 +71,16 @@ router.post('/', async (req, res) => {
 
     // Generate unique ID e.g. PAY-2026-001
     const year = new Date().getFullYear();
-    const [countResult] = await query('SELECT COUNT(*) as cnt FROM payments');
-    const newId = `PAY-${year}-${String(countResult.cnt + 1).padStart(3, '0')}`;
+    const allPayments = await query('SELECT id FROM payments');
+    let maxNum = 0;
+    for (const row of allPayments) {
+      const match = (row.id || '').match(/^PAY-\d{4}-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    }
+    const newId = `PAY-${year}-${String(maxNum + 1).padStart(3, '0')}`;
 
     await query(`
       INSERT INTO payments (

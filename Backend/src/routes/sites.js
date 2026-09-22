@@ -76,8 +76,16 @@ router.post('/', async (req, res) => {
     }
 
     // Generate unique ID e.g. SITE-01
-    const [countResult] = await query('SELECT COUNT(*) as cnt FROM sites');
-    const newId = `SITE-${String(countResult.cnt + 1).padStart(2, '0')}`;
+    const allSites = await query('SELECT id FROM sites');
+    let maxNum = 0;
+    for (const row of allSites) {
+      const match = (row.id || '').match(/^SITE-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    }
+    const newId = `SITE-${String(maxNum + 1).padStart(2, '0')}`;
 
     await query(`
       INSERT INTO sites (

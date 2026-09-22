@@ -254,17 +254,12 @@ const AddSiteModal = ({ isOpen, onClose }) => {
               id="site-code"
               type="text"
               name="code"
-              placeholder={`e.g. PRJ-${String(sites.length + 1).padStart(3, '0')}-2026`}
-              value={form.code}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              disabled={isSubmitting}
-              className={`form-control ${touched.code ? (errors.code ? 'is-invalid' : 'is-valid') : ''}`}
+              value={form.code || `PRJ-${String(sites.length + 1).padStart(3, '0')}-${new Date().getFullYear()}`}
+              readOnly
+              className={`form-control is-valid`}
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
             />
-            {touched.code && errors.code && (
-              <span className="form-error-msg"><AlertCircle size={13} /> {errors.code}</span>
-            )}
-            {!errors.code && <span className="form-hint">Leave blank to auto-generate code</span>}
+            <span className="form-hint">Auto-generated project code</span>
           </div>
 
           <div className="form-group">

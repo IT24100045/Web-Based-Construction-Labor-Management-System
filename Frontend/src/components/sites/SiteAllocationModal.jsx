@@ -3,6 +3,16 @@ import Modal from '../common/Modal';
 import { useLabor } from '../../context/LaborContext';
 import { CheckSquare, Square, HardHat, AlertCircle, Loader2 } from 'lucide-react';
 
+const checkOverlap = (s1, s2) => {
+  if (!s1 || !s2) return false;
+  if (!s1.startDate || !s2.startDate) return false;
+  const start1 = new Date(s1.startDate);
+  const end1 = s1.endDate ? new Date(s1.endDate) : new Date('2099-12-31');
+  const start2 = new Date(s2.startDate);
+  const end2 = s2.endDate ? new Date(s2.endDate) : new Date('2099-12-31');
+  return start1 <= end2 && start2 <= end1;
+};
+
 const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborersToSite }) => {
   const [selectedLaborerIds, setSelectedLaborerIds] = useState(() =>
     laborers.filter((l) => l.assignedSiteId === site.id).map((l) => l.id)
@@ -26,7 +36,10 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
 
   const handleSelectAll = () => {
     if (isSaving) return;
-    const allMatching = filteredLaborers.map((l) => l.id);
+    const allMatching = filteredLaborers.filter((lab) => {
+      const otherSite = sites.find((s) => s.id === lab.assignedSiteId && s.id !== site.id);
+      return !otherSite || !checkOverlap(site, otherSite);
+    }).map((l) => l.id);
     const combined = Array.from(new Set([...selectedLaborerIds, ...allMatching]));
     setSelectedLaborerIds(combined);
   };
@@ -120,11 +133,15 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
           filteredLaborers.map((lab) => {
             const isSelected = selectedLaborerIds.includes(lab.id);
             const otherSite = sites.find((s) => s.id === lab.assignedSiteId && s.id !== site.id);
+            const isConflict = otherSite ? checkOverlap(site, otherSite) : false;
 
             return (
               <div
                 key={lab.id}
-                onClick={() => toggleLaborer(lab.id)}
+                onClick={() => {
+                  if (isSaving || isConflict) return;
+                  toggleLaborer(lab.id);
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -132,9 +149,9 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
                   padding: '12px 16px',
                   borderBottom: '1px solid var(--border-subtle)',
                   background: isSelected ? 'rgba(245, 158, 11, 0.08)' : 'transparent',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  cursor: isSaving || isConflict ? 'not-allowed' : 'pointer',
                   transition: 'background var(--transition-fast)',
-                  opacity: isSaving ? 0.7 : 1
+                  opacity: isSaving || isConflict ? 0.5 : 1
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -154,6 +171,10 @@ const SiteAllocationContent = ({ site, onClose, laborers, sites, allocateLaborer
                 <div style={{ textAlign: 'right' }}>
                   {isSelected ? (
                     <span className="badge badge-emerald">Assigned Here</span>
+                  ) : isConflict ? (
+                    <span className="badge badge-rose" title={`Conflicts with ${otherSite.name} (${otherSite.startDate} to ${otherSite.endDate || 'Ongoing'})`}>
+                      Conflict: {otherSite.code}
+                    </span>
                   ) : otherSite ? (
                     <span className="badge badge-amber" title={`Currently at ${otherSite.name}`}>
                       At: {otherSite.code}
