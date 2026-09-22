@@ -113,6 +113,9 @@ router.post('/', async (req, res) => {
         supervisorNotes || ''
       ]);
 
+      // Sync the laborer's status with their latest attendance status
+      await query('UPDATE laborers SET status = ? WHERE id = ?', [status, laborerId]);
+
       const [saved] = await query(`
         SELECT 
           id,
@@ -200,6 +203,9 @@ router.put('/:id', async (req, res) => {
       id
     ]);
 
+    // Sync the laborer's status
+    await query('UPDATE laborers SET status = ? WHERE id = ?', [effStatus, existing.laborer_id]);
+
     const [updated] = await query(`
       SELECT 
         id,
@@ -230,8 +236,9 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Attendance record not found' });
     }
 
-    await query('DELETE FROM attendance WHERE id = ?', [id]);
-    res.json({ message: `Attendance record ${id} deleted successfully`, id });
+    // Soft delete: update status to 'Deleted' and reset hours
+    await query("UPDATE attendance SET status = 'Deleted', regular_hours = 0, overtime_hours = 0 WHERE id = ?", [id]);
+    res.json({ message: `Attendance record ${id} marked as deleted successfully`, id, status: 'Deleted' });
   } catch (err) {
     console.error('Error deleting attendance record:', err);
     res.status(500).json({ error: 'Failed to delete attendance record' });

@@ -12,14 +12,15 @@ import {
   Eye,
   History,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import StatCard from '../common/StatCard';
 import RecordPaymentModal from './RecordPaymentModal';
 import PaymentReceiptModal from './PaymentReceiptModal';
 
 const CalculatedWagesView = () => {
-  const { sites, payments, getCalculatedWages } = useLabor();
+  const { sites, payments, getCalculatedWages, deletePaymentRecord } = useLabor();
 
   const [activeTab, setActiveTab] = useState('wages'); // 'wages' | 'history'
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,6 +69,12 @@ const CalculatedWagesView = () => {
       payment: newPayment,
       wage: currentWage
     });
+  };
+
+  const handleDeletePayment = (payment) => {
+    if (window.confirm(`Are you sure you want to mark payment ${payment.id} as deleted?`)) {
+      deletePaymentRecord(payment.id);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -363,14 +370,24 @@ const CalculatedWagesView = () => {
                       <td style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{p.approvedBy}</td>
                       <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px' }}>{p.notes || '—'}</td>
                       <td>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
                           <button
-                            className="btn btn-secondary btn-sm"
+                            className="btn-icon"
                             onClick={() => setReceiptModalData({ isOpen: true, payment: p, wage })}
-                            title="View Payment Voucher" /* Sprint 2: Restore "View / Print Payment Voucher" when printing is enabled */
+                            title="View Payment Voucher"
                           >
-                            <FileCheck size={14} /> Voucher
+                            <FileCheck size={14} />
                           </button>
+                          {p.amount > 0 && (
+                            <button
+                              className="btn-icon"
+                              style={{ color: 'var(--rose)' }}
+                              onClick={() => handleDeletePayment(p)}
+                              title="Delete Payment Record"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

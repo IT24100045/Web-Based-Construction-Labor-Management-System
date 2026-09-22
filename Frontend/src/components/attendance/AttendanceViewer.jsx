@@ -105,6 +105,8 @@ const AttendanceViewer = () => {
         return <span className="badge badge-rose"><span className="badge-dot" />Absent</span>;
       case 'Leave':
         return <span className="badge badge-purple"><span className="badge-dot" />Leave</span>;
+      case 'Deleted':
+        return <span className="badge badge-gray"><span className="badge-dot" />Deleted</span>;
       default:
         return <span className="badge badge-gray">{status}</span>;
     }
@@ -195,6 +197,7 @@ const AttendanceViewer = () => {
           <option value="Half-Day">Half-Day</option>
           <option value="Absent">Absent</option>
           <option value="Leave">Leave</option>
+          <option value="Deleted">Deleted</option>
         </select>
 
         {/* Date Filter */}
@@ -334,23 +337,25 @@ const AttendanceViewer = () => {
                     </td>
 
                     <td>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
-                        <button
-                          className="btn-icon"
-                          title="Correct Attendance Record"
-                          onClick={() => setEditingRecord(rec)}
-                        >
-                          <Edit2 size={15} />
-                        </button>
-                        <button
-                          className="btn-icon"
-                          style={{ color: 'var(--rose)' }}
-                          title="Delete Attendance Record"
-                          onClick={() => handleDelete(rec)}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
+                      {rec.status !== 'Deleted' && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                          <button
+                            className="btn-icon"
+                            title="Correct Attendance Record"
+                            onClick={() => setEditingRecord(rec)}
+                          >
+                            <Edit2 size={15} />
+                          </button>
+                          <button
+                            className="btn-icon"
+                            style={{ color: 'var(--rose)' }}
+                            title="Delete Attendance Record"
+                            onClick={() => handleDelete(rec)}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

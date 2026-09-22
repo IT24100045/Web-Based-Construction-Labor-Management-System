@@ -20,6 +20,24 @@ import EditLaborerModal from './EditLaborerModal';
 import LaborerDetailsModal from './LaborerDetailsModal';
 import { JOB_ROLES } from '../../utils/mockData';
 
+const getLaborerStatusBadge = (status) => {
+  switch (status) {
+    case 'Active':
+    case 'Present':
+      return <span className="badge badge-emerald"><span className="badge-dot" />{status}</span>;
+    case 'Half-Day':
+      return <span className="badge badge-amber"><span className="badge-dot" />{status}</span>;
+    case 'Absent':
+      return <span className="badge badge-rose"><span className="badge-dot" />{status}</span>;
+    case 'On Leave':
+    case 'Leave':
+      return <span className="badge badge-purple"><span className="badge-dot" />{status}</span>;
+    case 'Inactive':
+    default:
+      return <span className="badge badge-gray"><span className="badge-dot" />{status}</span>;
+  }
+};
+
 const LaborerDirectory = ({ onRecordPaymentForLaborer }) => {
   const { laborers, sites, deleteLaborer } = useLabor();
 
@@ -177,8 +195,12 @@ const LaborerDirectory = ({ onRecordPaymentForLaborer }) => {
         >
           <option value="ALL">All Status</option>
           <option value="Active">Active</option>
-          <option value="On Leave">On Leave</option>
           <option value="Inactive">Inactive</option>
+          <option value="Present">Present</option>
+          <option value="Half-Day">Half-Day</option>
+          <option value="Absent">Absent</option>
+          <option value="Leave">Leave</option>
+          <option value="On Leave">On Leave</option>
         </select>
 
         {(searchTerm || selectedRole !== 'ALL' || selectedSite !== 'ALL' || selectedStatus !== 'ALL') && (
@@ -288,10 +310,7 @@ const LaborerDirectory = ({ onRecordPaymentForLaborer }) => {
                     </td>
 
                     <td>
-                      <span className={`badge ${lab.status === 'Active' ? 'badge-emerald' : 'badge-amber'}`}>
-                        <span className="badge-dot" />
-                        {lab.status}
-                      </span>
+                      {getLaborerStatusBadge(lab.status)}
                     </td>
 
                     <td>

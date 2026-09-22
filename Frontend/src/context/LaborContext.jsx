@@ -207,6 +207,14 @@ export const LaborProvider = ({ children }) => {
         });
         return updated;
       });
+      // Sync laborer status
+      setLaborers((prev) => prev.map(lab => {
+        const latestRec = savedList.find(r => r.laborerId === lab.id);
+        if (latestRec) {
+          return { ...lab, status: latestRec.status };
+        }
+        return lab;
+      }));
       showToast(`Daily attendance saved for ${savedList.length} worker(s).`);
       return savedList;
     } catch (err) {
@@ -219,6 +227,7 @@ export const LaborProvider = ({ children }) => {
     try {
       const updated = await attendanceApi.update(id, updatedFields);
       setAttendance((prev) => prev.map((rec) => (rec.id === id ? updated : rec)));
+      setLaborers((prev) => prev.map(lab => lab.id === updated.laborerId ? { ...lab, status: updated.status } : lab));
       showToast(`Attendance record updated.`);
       return updated;
     } catch (err) {
@@ -230,8 +239,8 @@ export const LaborProvider = ({ children }) => {
   const deleteAttendanceRecord = async (id) => {
     try {
       await attendanceApi.delete(id);
-      setAttendance((prev) => prev.filter((rec) => rec.id !== id));
-      showToast(`Attendance record removed.`, 'info');
+      setAttendance((prev) => prev.map((rec) => (rec.id === id ? { ...rec, status: 'Deleted', regularHours: 0, overtimeHours: 0 } : rec)));
+      showToast(`Attendance record marked as deleted.`, 'info');
     } catch (err) {
       showToast(err.message, 'error');
       throw err;
@@ -245,6 +254,22 @@ export const LaborProvider = ({ children }) => {
       setPayments((prev) => [created, ...prev]);
       showToast(`Payment of Rs. ${created.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} recorded successfully.`);
       return created;
+    } catch (err) {
+      showToast(err.message, 'error');
+      throw err;
+    }
+  };
+
+  const deletePaymentRecord = async (id) => {
+    try {
+      const res = await paymentsApi.delete(id);
+      setPayments((prev) => prev.map((p) => {
+        if (p.id === id) {
+          return { ...p, amount: 0, notes: `[Deleted] ${p.notes || ''}`.trim() };
+        }
+        return p;
+      }));
+      showToast(`Payment marked as deleted.`, 'info');
     } catch (err) {
       showToast(err.message, 'error');
       throw err;
@@ -332,6 +357,7 @@ export const LaborProvider = ({ children }) => {
         updateAttendanceRecord,
         deleteAttendanceRecord,
         recordPayment,
+        deletePaymentRecord,
         getCalculatedWages
       }}
     >

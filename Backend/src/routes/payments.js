@@ -109,4 +109,22 @@ router.post('/', async (req, res) => {
   }
 });
 
+// DELETE /api/payments/:id
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [existing] = await query('SELECT id FROM payments WHERE id = ?', [id]);
+    if (!existing) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    // Soft delete: set amount to 0 and prepend [Deleted] to notes
+    await query("UPDATE payments SET amount = 0, notes = CONCAT('[Deleted] ', COALESCE(notes, '')) WHERE id = ?", [id]);
+    res.json({ message: `Payment ${id} marked as deleted successfully`, id, status: 'Deleted' });
+  } catch (err) {
+    console.error('Error deleting payment:', err);
+    res.status(500).json({ error: 'Failed to delete payment' });
+  }
+});
+
 module.exports = router;

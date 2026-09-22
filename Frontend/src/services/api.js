@@ -97,6 +97,10 @@ export const paymentsApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
+    }).then(handleResponse),
+  delete: (id) =>
+    fetch(`${API_BASE}/payments/${id}`, {
+      method: 'DELETE'
     }).then(handleResponse)
 };
 
