@@ -52,7 +52,7 @@ const CreateUserModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const validateField = (field, value, allValues = form) => {
+  const validateField = (field, value) => {
     let err = '';
     const trimmed = (value || '').trim();
 
@@ -119,7 +119,7 @@ const CreateUserModal = ({ isOpen, onClose }) => {
     if (touched[name]) {
       setErrors((prev) => ({
         ...prev,
-        [name]: validateField(name, value, updated)
+        [name]: validateField(name, value)
       }));
     }
   };
@@ -129,7 +129,7 @@ const CreateUserModal = ({ isOpen, onClose }) => {
     setTouched((prev) => ({ ...prev, [name]: true }));
     setErrors((prev) => ({
       ...prev,
-      [name]: validateField(name, value, form)
+      [name]: validateField(name, value)
     }));
   };
 
@@ -138,7 +138,7 @@ const CreateUserModal = ({ isOpen, onClose }) => {
 
     const errs = {};
     ['name', 'username', 'email', 'password'].forEach((f) => {
-      const err = validateField(f, form[f], form);
+      const err = validateField(f, form[f]);
       if (err) errs[f] = err;
     });
 

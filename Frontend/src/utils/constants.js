@@ -30,3 +30,16 @@ export const PROJECT_TYPES = [
   'Industrial',
   'Civil Restoration'
 ];
+
+export const EXTRA_PAYMENT_CATEGORIES = [
+  'Bonus / Performance Incentive',
+  'Salary Advance',
+  'Transport & Travel Allowance',
+  'Food & Living Allowance',
+  'Hazard & Hardship Pay',
+  'Tool & Safety Grant',
+  'Festival / Holiday Bonus',
+  'Medical & Emergency Relief',
+  'Special Achievement Award',
+  'Other Extra Allowance'
+];

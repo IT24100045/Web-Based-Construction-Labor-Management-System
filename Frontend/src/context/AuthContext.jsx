@@ -15,7 +15,7 @@ export const SYSTEM_ROLES = [
     badgeColor: '#a855f7',
     badgeBg: 'rgba(168, 85, 247, 0.15)',
     defaultTab: 'dashboard',
-    allowedTabs: ['dashboard', 'users', 'laborers', 'sites', 'attendance', 'wages'],
+    allowedTabs: ['dashboard', 'users', 'laborers', 'sites', 'attendance', 'wages', 'extra-payments'],
     responsibilities: [
       'Complete administrative control & system oversight',
       'Manage user accounts, roles, and security access',
@@ -55,7 +55,7 @@ export const SYSTEM_ROLES = [
     badgeColor: '#f59e0b',
     badgeBg: 'rgba(245, 158, 11, 0.15)',
     defaultTab: 'attendance',
-    allowedTabs: ['laborers', 'sites', 'attendance', 'wages'],
+    allowedTabs: ['laborers', 'sites', 'attendance', 'wages', 'extra-payments'],
     responsibilities: [
       'Log daily muster roll and worker check-ins',
       'Record regular and overtime (OT) hours with justification',
@@ -75,7 +75,7 @@ export const SYSTEM_ROLES = [
     badgeColor: '#10b981',
     badgeBg: 'rgba(16, 185, 129, 0.15)',
     defaultTab: 'laborers',
-    allowedTabs: ['laborers', 'attendance', 'wages'],
+    allowedTabs: ['laborers', 'attendance', 'wages', 'extra-payments'],
     responsibilities: [
       'Onboard and register new construction laborers',
       'Maintain verified employee directory, contact, and emergency records',
@@ -95,7 +95,7 @@ export const SYSTEM_ROLES = [
     badgeColor: '#f43f5e',
     badgeBg: 'rgba(244, 63, 94, 0.15)',
     defaultTab: 'wages',
-    allowedTabs: ['attendance', 'wages'],
+    allowedTabs: ['attendance', 'wages', 'extra-payments'],
     responsibilities: [
       'Calculate gross wages with automated 1.5x overtime rates',
       'Process payment disbursements and log payment methods',
@@ -114,7 +114,7 @@ export const getRoleMeta = (role) => {
         badgeColor: '#a855f7',
         badgeBg: 'rgba(168, 85, 247, 0.15)',
         defaultTab: 'dashboard',
-        allowedTabs: ['dashboard', 'users', 'laborers', 'sites', 'attendance', 'wages']
+        allowedTabs: ['dashboard', 'users', 'laborers', 'sites', 'attendance', 'wages', 'extra-payments']
       };
     case 'project_manager':
       return {
@@ -130,7 +130,7 @@ export const getRoleMeta = (role) => {
         badgeColor: '#f59e0b',
         badgeBg: 'rgba(245, 158, 11, 0.15)',
         defaultTab: 'attendance',
-        allowedTabs: ['laborers', 'sites', 'attendance', 'wages']
+        allowedTabs: ['laborers', 'sites', 'attendance', 'wages', 'extra-payments']
       };
     case 'hr_manager':
       return {
@@ -138,7 +138,7 @@ export const getRoleMeta = (role) => {
         badgeColor: '#10b981',
         badgeBg: 'rgba(16, 185, 129, 0.15)',
         defaultTab: 'laborers',
-        allowedTabs: ['laborers', 'attendance', 'wages']
+        allowedTabs: ['laborers', 'attendance', 'wages', 'extra-payments']
       };
     case 'payroll_officer':
       return {
@@ -146,7 +146,7 @@ export const getRoleMeta = (role) => {
         badgeColor: '#f43f5e',
         badgeBg: 'rgba(244, 63, 94, 0.15)',
         defaultTab: 'wages',
-        allowedTabs: ['attendance', 'wages']
+        allowedTabs: ['attendance', 'wages', 'extra-payments']
       };
     default:
       return {

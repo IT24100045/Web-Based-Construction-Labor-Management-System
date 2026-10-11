@@ -5,7 +5,7 @@ const { query } = require('../db');
 // GET /api/payments
 router.get('/', async (req, res) => {
   try {
-    const { laborerId } = req.query;
+    const { laborerId, type } = req.query;
     let sql = `
       SELECT 
         id,
@@ -15,7 +15,10 @@ router.get('/', async (req, res) => {
         method,
         reference,
         approved_by AS approvedBy,
-        notes
+        notes,
+        COALESCE(payment_type, 'Wage') AS paymentType,
+        extra_category AS extraCategory,
+        created_at AS createdAt
       FROM payments
       WHERE 1=1
     `;
@@ -24,6 +27,11 @@ router.get('/', async (req, res) => {
     if (laborerId) {
       sql += ' AND laborer_id = ?';
       params.push(laborerId);
+    }
+
+    if (type) {
+      sql += ' AND LOWER(COALESCE(payment_type, "Wage")) = LOWER(?)';
+      params.push(type);
     }
 
     sql += ' ORDER BY date DESC, created_at DESC';
@@ -46,7 +54,9 @@ router.post('/', async (req, res) => {
       method = 'Bank Transfer',
       reference,
       approvedBy,
-      notes = ''
+      notes = '',
+      paymentType = 'Wage',
+      extraCategory = null
     } = req.body;
 
     if (!laborerId || !amount || !reference || !approvedBy) {
@@ -69,23 +79,31 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Selected laborer profile not found' });
     }
 
-    // Generate unique ID e.g. PAY-2026-001
+    // Generate unique ID e.g. EXT-2026-001 or PAY-2026-001
+    const isExtra = String(paymentType).toLowerCase() === 'extra';
+    const prefix = isExtra ? 'EXT' : 'PAY';
     const year = new Date().getFullYear();
     const allPayments = await query('SELECT id FROM payments');
     let maxNum = 0;
+    const regex = new RegExp(`^${prefix}-\\d{4}-(\\d+)$`, 'i');
     for (const row of allPayments) {
-      const match = (row.id || '').match(/^PAY-\d{4}-(\d+)$/i);
+      const match = (row.id || '').match(regex);
       if (match) {
         const num = parseInt(match[1], 10);
         if (num > maxNum) maxNum = num;
       }
     }
-    const newId = `PAY-${year}-${String(maxNum + 1).padStart(3, '0')}`;
+    const newId = `${prefix}-${year}-${String(maxNum + 1).padStart(3, '0')}`;
+
+    let finalNotes = (notes || '').trim();
+    if (isExtra && !finalNotes.includes('[Extra Payment]')) {
+      finalNotes = `[Extra Payment${extraCategory ? `: ${extraCategory}` : ''}] ${finalNotes}`.trim();
+    }
 
     await query(`
       INSERT INTO payments (
-        id, laborer_id, amount, date, method, reference, approved_by, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        id, laborer_id, amount, date, method, reference, approved_by, notes, payment_type, extra_category
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       newId,
       laborerId,
@@ -94,7 +112,9 @@ router.post('/', async (req, res) => {
       method,
       reference.trim(),
       approvedBy.trim(),
-      (notes || '').trim()
+      finalNotes,
+      isExtra ? 'Extra' : 'Wage',
+      extraCategory || null
     ]);
 
     const [created] = await query(`
@@ -106,7 +126,10 @@ router.post('/', async (req, res) => {
         method,
         reference,
         approved_by AS approvedBy,
-        notes
+        notes,
+        COALESCE(payment_type, 'Wage') AS paymentType,
+        extra_category AS extraCategory,
+        created_at AS createdAt
       FROM payments WHERE id = ?
     `, [newId]);
 

@@ -9,6 +9,7 @@ import LaborerDirectory from './components/labor/LaborerDirectory';
 import RegisteredSitesView from './components/sites/RegisteredSitesView';
 import AttendanceModule from './components/attendance/AttendanceModule';
 import CalculatedWagesView from './components/wages/CalculatedWagesView';
+import ExtraPaymentsView from './components/wages/ExtraPaymentsView';
 import AddLaborerModal from './components/labor/AddLaborerModal';
 import AddSiteModal from './components/sites/AddSiteModal';
 import RecordPaymentModal from './components/wages/RecordPaymentModal';
@@ -17,7 +18,7 @@ import HomePage from './components/home/HomePage';
 import UserManagementView from './components/users/UserManagementView';
 import './App.css';
 
-const APP_TABS = ['dashboard', 'users', 'laborers', 'sites', 'attendance', 'wages'];
+const APP_TABS = ['dashboard', 'users', 'laborers', 'sites', 'attendance', 'wages', 'extra-payments'];
 
 const getTabFromHash = () => {
   if (typeof window === 'undefined') return null;
@@ -65,7 +66,9 @@ function MainApp({ activeTab: controlledTab, onTabChange }) {
       case 'attendance':
         return <AttendanceModule />;
       case 'wages':
-        return <CalculatedWagesView />;
+        return <CalculatedWagesView onNavigateToExtraPayments={() => setActiveTab('extra-payments')} />;
+      case 'extra-payments':
+        return <ExtraPaymentsView onNavigateToWages={() => setActiveTab('wages')} />;
       case 'dashboard':
       default:
         return (

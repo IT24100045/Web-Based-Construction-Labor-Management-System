@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import { useLabor } from '../../context/LaborContext';
+import { useAuth, SYSTEM_ROLES } from '../../context/AuthContext';
+import { usersApi } from '../../services/api';
 import { DollarSign, AlertCircle, Info, Loader2 } from 'lucide-react';
 
 const getTodayDateString = () => {
@@ -19,13 +21,14 @@ const RecordPaymentForm = ({
   onSuccessPayment
 }) => {
   const todayStr = getTodayDateString();
+  const { usersList, systemRoles } = useAuth();
 
   const [form, setForm] = useState(() => ({
     amount: currentLaborerWage && currentLaborerWage.balanceDue > 0 ? currentLaborerWage.balanceDue.toFixed(2) : '0.00',
     date: todayStr,
     method: 'Bank Transfer',
     reference: `TXN-${Date.now().toString().slice(-6)}`,
-    approvedBy: 'Eng. Nihal Samarasinghe (Chief Supervisor)',
+    approvedBy: '',
     notes: 'Bi-weekly payroll settlement'
   }));
 
@@ -33,6 +36,61 @@ const RecordPaymentForm = ({
   const [touched, setTouched] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [supervisors, setSupervisors] = useState([]);
+  const [isLoadingSupervisors, setIsLoadingSupervisors] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadSupervisors = async () => {
+      setIsLoadingSupervisors(true);
+      try {
+        const users = await usersApi.getAll();
+        if (isMounted && Array.isArray(users)) {
+          const supervisorUsers = users.filter((u) =>
+            u.role?.toLowerCase() === 'site_supervisor' && u.status?.toLowerCase() !== 'inactive'
+          );
+          if (supervisorUsers.length > 0) {
+            setSupervisors(supervisorUsers);
+            setForm((prev) => (!prev.approvedBy ? { ...prev, approvedBy: supervisorUsers[0].name } : prev));
+            setIsLoadingSupervisors(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load supervisors from API:', err);
+      }
+
+      if (isMounted) {
+        const authSupUsers = (usersList || []).filter((u) =>
+          u.role?.toLowerCase() === 'site_supervisor' && u.status?.toLowerCase() !== 'inactive'
+        );
+        if (authSupUsers.length > 0) {
+          setSupervisors(authSupUsers);
+          setForm((prev) => (!prev.approvedBy ? { ...prev, approvedBy: authSupUsers[0].name } : prev));
+        } else {
+          const defaultSup = (systemRoles || SYSTEM_ROLES || []).find((r) =>
+            r.key === 'site_supervisor' || r.id === 'site_supervisor'
+          );
+          const defaultList = [
+            {
+              id: defaultSup?.id || 'default-supervisor',
+              name: defaultSup?.name || 'Eng. N. Samarasinghe',
+              title: defaultSup?.title || 'Chief Site Supervisor'
+            }
+          ];
+          setSupervisors(defaultList);
+          setForm((prev) => (!prev.approvedBy ? { ...prev, approvedBy: defaultList[0].name } : prev));
+        }
+        setIsLoadingSupervisors(false);
+      }
+    };
+
+    loadSupervisors();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [usersList, systemRoles]);
 
   const validateField = (field, value) => {
     let err = '';
@@ -62,9 +120,7 @@ const RecordPaymentForm = ({
         break;
       case 'approvedBy':
         if (!trimmed) {
-          err = 'Authorizing official or finance officer name is required.';
-        } else if (trimmed.length < 3) {
-          err = 'Authorizer name must be at least 3 characters.';
+          err = 'Please select an authorizing site supervisor.';
         }
         break;
       default:
@@ -280,17 +336,28 @@ const RecordPaymentForm = ({
         <label className="form-label" htmlFor="pay-approved">
           Authorized By (Supervisor / Finance) <span className="required">*</span>
         </label>
-        <input
+        <select
           id="pay-approved"
-          type="text"
           name="approvedBy"
           value={form.approvedBy}
           onChange={handleChange}
           onBlur={handleBlur}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isLoadingSupervisors}
           className={`form-control ${touched.approvedBy ? (errors.approvedBy ? 'is-invalid' : 'is-valid') : ''}`}
           required
-        />
+        >
+          <option value="">
+            {isLoadingSupervisors ? 'Loading supervisors...' : '-- Select Site Supervisor --'}
+          </option>
+          {supervisors.map((sup) => (
+            <option key={sup.id || sup.name} value={sup.name}>
+              {sup.name} {sup.title ? `(${sup.title})` : ''}
+            </option>
+          ))}
+          {form.approvedBy && !supervisors.some((s) => s.name === form.approvedBy) && (
+            <option value={form.approvedBy}>{form.approvedBy}</option>
+          )}
+        </select>
         {touched.approvedBy && errors.approvedBy && (
           <span className="form-error-msg"><AlertCircle size={13} /> {errors.approvedBy}</span>
         )}

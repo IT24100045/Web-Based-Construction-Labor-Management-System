@@ -252,7 +252,9 @@ export const LaborProvider = ({ children }) => {
     try {
       const created = await paymentsApi.record(paymentData);
       setPayments((prev) => [created, ...prev]);
-      showToast(`Payment of Rs. ${created.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} recorded successfully.`);
+      const isExtra = created.paymentType?.toLowerCase() === 'extra' || created.notes?.includes('[Extra Payment]');
+      const label = isExtra ? 'Extra payment' : 'Payment';
+      showToast(`${label} of Rs. ${created.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} recorded successfully.`);
       return created;
     } catch (err) {
       showToast(err.message, 'error');
@@ -262,7 +264,7 @@ export const LaborProvider = ({ children }) => {
 
   const deletePaymentRecord = async (id) => {
     try {
-      const res = await paymentsApi.delete(id);
+      await paymentsApi.delete(id);
       setPayments((prev) => prev.map((p) => {
         if (p.id === id) {
           return { ...p, amount: 0, notes: `[Deleted] ${p.notes || ''}`.trim() };
@@ -300,10 +302,21 @@ export const LaborProvider = ({ children }) => {
       const overtimeWages = totalOvertimeHours * overtimeRate;
       const grossWages = regularWages + overtimeWages;
 
-      // Filter laborer's payments
-      const laborerPayments = payments.filter((p) => p.laborerId === laborer.id);
-      const totalPaid = laborerPayments.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
+      // Filter laborer's wage payments (exclude extra payments so they are separate from wages)
+      const laborerWagePayments = payments.filter((p) => {
+        if (p.laborerId !== laborer.id) return false;
+        const isExtra = p.paymentType?.toLowerCase() === 'extra' || p.notes?.includes('[Extra Payment]');
+        return !isExtra;
+      });
+      const totalPaid = laborerWagePayments.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
       const balanceDue = Math.max(0, grossWages - totalPaid);
+
+      // Separate extra payments for this laborer
+      const laborerExtraPayments = payments.filter((p) => {
+        if (p.laborerId !== laborer.id) return false;
+        return p.paymentType?.toLowerCase() === 'extra' || p.notes?.includes('[Extra Payment]');
+      });
+      const totalExtraPaid = laborerExtraPayments.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
 
       let paymentStatus = 'Pending';
       if (totalPaid >= grossWages && grossWages > 0) {
@@ -326,12 +339,21 @@ export const LaborProvider = ({ children }) => {
         overtimeWages,
         grossWages,
         totalPaid,
+        totalExtraPaid,
+        extraPaymentsCount: laborerExtraPayments.length,
         balanceDue,
         paymentStatus,
         attendanceCount: laborerAttendance.length
       };
     });
   };
+
+  const extraPayments = payments.filter(
+    (p) => p.paymentType?.toLowerCase() === 'extra' || p.notes?.includes('[Extra Payment]')
+  );
+  const wagePayments = payments.filter(
+    (p) => !(p.paymentType?.toLowerCase() === 'extra' || p.notes?.includes('[Extra Payment]'))
+  );
 
   return (
     <LaborContext.Provider
@@ -340,6 +362,8 @@ export const LaborProvider = ({ children }) => {
         sites,
         attendance,
         payments,
+        wagePayments,
+        extraPayments,
         toasts,
         isLoading,
         fetchError,
@@ -357,6 +381,7 @@ export const LaborProvider = ({ children }) => {
         updateAttendanceRecord,
         deleteAttendanceRecord,
         recordPayment,
+        recordExtraPayment: (extraData) => recordPayment({ ...extraData, paymentType: 'Extra' }),
         deletePaymentRecord,
         getCalculatedWages
       }}

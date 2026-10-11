@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarCheck,
   Receipt,
+  Gift,
   HardHat,
   RefreshCw,
   LogOut,
@@ -13,7 +14,7 @@ import { useLabor } from '../../context/LaborContext';
 import { useAuth, getRoleMeta } from '../../context/AuthContext';
 
 const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
-  const { laborers, sites, refreshAllData, isLoading } = useLabor();
+  const { laborers, sites, extraPayments, refreshAllData, isLoading } = useLabor();
   const { currentUser, logout, usersList } = useAuth();
 
   const roleMeta = getRoleMeta(currentUser?.role);
@@ -59,6 +60,12 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
       label: 'Wages & Payments',
       icon: <Receipt size={19} />,
       badge: 'Payroll'
+    },
+    {
+      id: 'extra-payments',
+      label: 'Extra Payments',
+      icon: <Gift size={19} />,
+      badge: extraPayments?.length ? `${extraPayments.length}` : 'Bonus'
     }
   ];
 

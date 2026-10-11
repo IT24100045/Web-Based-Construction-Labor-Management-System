@@ -56,23 +56,41 @@ const PaymentReceiptModal = ({ isOpen, onClose, payment, laborerWage }) => {
           </div>
         </div>
 
-        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '12px', marginBottom: '16px' }}>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
-            Shift Operations Summary
+        {payment.paymentType?.toLowerCase() === 'extra' || payment.notes?.includes('[Extra Payment]') ? (
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '12px', marginBottom: '16px' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--emerald)', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 600 }}>
+              Special Compensation Classification
+            </div>
+            <div className="receipt-row">
+              <span>Disbursement Classification</span>
+              <span className="badge badge-emerald">Separate Extra Compensation</span>
+            </div>
+            {payment.extraCategory && (
+              <div className="receipt-row">
+                <span>Award / Grant Category</span>
+                <span style={{ fontWeight: 600, color: '#fff' }}>{payment.extraCategory}</span>
+              </div>
+            )}
           </div>
-          <div className="receipt-row">
-            <span>Regular Shift Hours ({laborerWage?.totalRegularHours || 0} hrs @ Rs. {laborer?.hourlyRate.toFixed(2)}/hr)</span>
-            <span className="currency">Rs. {(laborerWage?.regularWages || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        ) : (
+          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '12px', marginBottom: '16px' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+              Shift Operations Summary
+            </div>
+            <div className="receipt-row">
+              <span>Regular Shift Hours ({laborerWage?.totalRegularHours || 0} hrs @ Rs. {(parseFloat(laborer?.hourlyRate) || 1200).toFixed(2)}/hr)</span>
+              <span className="currency">Rs. {(laborerWage?.regularWages || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div className="receipt-row">
+              <span>Overtime Shift Hours ({laborerWage?.totalOvertimeHours || 0} hrs @ 1.5x Rs. {((parseFloat(laborer?.hourlyRate) || 1200) * 1.5).toFixed(2)}/hr)</span>
+              <span className="currency">Rs. {(laborerWage?.overtimeWages || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div className="receipt-row" style={{ fontWeight: 700, color: '#fff' }}>
+              <span>Total Gross Calculated Wages</span>
+              <span className="currency">Rs. {(laborerWage?.grossWages || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
           </div>
-          <div className="receipt-row">
-            <span>Overtime Shift Hours ({laborerWage?.totalOvertimeHours || 0} hrs @ 1.5x Rs. {((laborer?.hourlyRate || 0) * 1.5).toFixed(2)}/hr)</span>
-            <span className="currency">Rs. {(laborerWage?.overtimeWages || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          </div>
-          <div className="receipt-row" style={{ fontWeight: 700, color: '#fff' }}>
-            <span>Total Gross Calculated Wages</span>
-            <span className="currency">Rs. {(laborerWage?.grossWages || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          </div>
-        </div>
+        )}
 
         <div className="receipt-total-highlight">
           <div>

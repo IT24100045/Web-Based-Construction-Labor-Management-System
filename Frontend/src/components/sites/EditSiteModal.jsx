@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import { useLabor } from '../../context/LaborContext';
+import { useAuth, SYSTEM_ROLES } from '../../context/AuthContext';
+import { usersApi } from '../../services/api';
 import { PROJECT_TYPES } from '../../utils/mockData';
 import { Save, AlertCircle, Loader2 } from 'lucide-react';
 
 const EditSiteForm = ({ site, updateSite, onClose, sites }) => {
+  const { usersList, systemRoles } = useAuth();
+
   const [form, setForm] = useState(() => ({
     name: site.name || '',
     code: site.code || '',
@@ -23,6 +27,57 @@ const EditSiteForm = ({ site, updateSite, onClose, sites }) => {
   const [touched, setTouched] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [supervisors, setSupervisors] = useState([]);
+  const [isLoadingSupervisors, setIsLoadingSupervisors] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadSupervisors = async () => {
+      setIsLoadingSupervisors(true);
+      try {
+        const users = await usersApi.getAll();
+        if (isMounted && Array.isArray(users)) {
+          const supervisorUsers = users.filter((u) =>
+            u.role?.toLowerCase() === 'site_supervisor' && u.status?.toLowerCase() !== 'inactive'
+          );
+          if (supervisorUsers.length > 0) {
+            setSupervisors(supervisorUsers);
+            setIsLoadingSupervisors(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch supervisors from users API:', err);
+      }
+
+      if (isMounted) {
+        const authSupUsers = (usersList || []).filter((u) =>
+          u.role?.toLowerCase() === 'site_supervisor' && u.status?.toLowerCase() !== 'inactive'
+        );
+        if (authSupUsers.length > 0) {
+          setSupervisors(authSupUsers);
+        } else {
+          const defaultSup = (systemRoles || SYSTEM_ROLES || []).find((r) =>
+            r.key === 'site_supervisor' || r.id === 'site_supervisor'
+          );
+          setSupervisors([
+            {
+              id: defaultSup?.id || 'default-supervisor',
+              name: defaultSup?.name || 'Eng. N. Samarasinghe',
+              title: defaultSup?.title || 'Chief Site Supervisor'
+            }
+          ]);
+        }
+        setIsLoadingSupervisors(false);
+      }
+    };
+
+    loadSupervisors();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [usersList, systemRoles]);
 
   const validateField = (field, value, allValues = form) => {
     let err = '';
@@ -79,9 +134,7 @@ const EditSiteForm = ({ site, updateSite, onClose, sites }) => {
         break;
       case 'manager':
         if (!trimmed) {
-          err = 'Supervisor / Manager in-charge is required.';
-        } else if (trimmed.length < 3) {
-          err = 'Manager name must be at least 3 characters.';
+          err = 'Please select a site supervisor.';
         }
         break;
       default:
@@ -351,19 +404,30 @@ const EditSiteForm = ({ site, updateSite, onClose, sites }) => {
 
         <div className="form-group">
           <label className="form-label" htmlFor="edit-site-mgr">
-            Supervisor In-Charge <span className="required">*</span>
+            Site Supervisor In-Charge <span className="required">*</span>
           </label>
-          <input
+          <select
             id="edit-site-mgr"
-            type="text"
             name="manager"
             value={form.manager}
             onChange={handleChange}
             onBlur={handleBlur}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoadingSupervisors}
             className={`form-control ${touched.manager ? (errors.manager ? 'is-invalid' : 'is-valid') : ''}`}
             required
-          />
+          >
+            <option value="">
+              {isLoadingSupervisors ? 'Loading supervisors...' : '-- Select Site Supervisor --'}
+            </option>
+            {supervisors.map((sup) => (
+              <option key={sup.id || sup.name} value={sup.name}>
+                {sup.name} {sup.title ? `(${sup.title})` : ''}
+              </option>
+            ))}
+            {form.manager && !supervisors.some((s) => s.name === form.manager) && (
+              <option value={form.manager}>{form.manager}</option>
+            )}
+          </select>
           {touched.manager && errors.manager && (
             <span className="form-error-msg"><AlertCircle size={13} /> {errors.manager}</span>
           )}

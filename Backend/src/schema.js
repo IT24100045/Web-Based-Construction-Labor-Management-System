@@ -66,6 +66,8 @@ async function initializeSchema() {
       reference VARCHAR(100) NOT NULL,
       approved_by VARCHAR(255) NOT NULL,
       notes TEXT,
+      payment_type VARCHAR(50) NOT NULL DEFAULT 'Wage',
+      extra_category VARCHAR(100) DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_payments_laborer (laborer_id),
@@ -91,6 +93,19 @@ async function initializeSchema() {
 
   for (const q of queries) {
     await pool.query(q);
+  }
+
+  // Migration: Add payment_type and extra_category to payments table
+  try {
+    await pool.query("ALTER TABLE payments ADD COLUMN payment_type VARCHAR(50) NOT NULL DEFAULT 'Wage'");
+  } catch (e) {
+    // Column might already exist
+  }
+
+  try {
+    await pool.query("ALTER TABLE payments ADD COLUMN extra_category VARCHAR(100) DEFAULT NULL");
+  } catch (e) {
+    // Column might already exist
   }
 
   // Migration: Relax nic column and migrate legacy LAB IDs to EMP IDs

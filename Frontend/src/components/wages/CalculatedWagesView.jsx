@@ -4,6 +4,7 @@ import {
   Receipt,
   DollarSign,
   CreditCard,
+  Gift,
   Search,
   Building2,
   Clock,
@@ -17,12 +18,14 @@ import {
 } from 'lucide-react';
 import StatCard from '../common/StatCard';
 import RecordPaymentModal from './RecordPaymentModal';
+import RecordExtraPaymentModal from './RecordExtraPaymentModal';
 import PaymentReceiptModal from './PaymentReceiptModal';
+import ExtraPaymentsView from './ExtraPaymentsView';
 
 const CalculatedWagesView = () => {
-  const { sites, payments, getCalculatedWages, deletePaymentRecord } = useLabor();
+  const { sites, wagePayments, extraPayments, getCalculatedWages, deletePaymentRecord } = useLabor();
 
-  const [activeTab, setActiveTab] = useState('wages'); // 'wages' | 'history'
+  const [activeTab, setActiveTab] = useState('wages'); // 'wages' | 'history' | 'extra'
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSiteId, setSelectedSiteId] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
@@ -30,6 +33,8 @@ const CalculatedWagesView = () => {
   // Modals state
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [selectedLaborerForPay, setSelectedLaborerForPay] = useState(null);
+  const [isRecordExtraPaymentOpen, setIsRecordExtraPaymentOpen] = useState(false);
+  const [selectedLaborerForExtraPay, setSelectedLaborerForExtraPay] = useState(null);
   const [receiptModalData, setReceiptModalData] = useState({ isOpen: false, payment: null, wage: null });
 
   // Calculate wages dynamically from attendance and laborer rates
@@ -61,6 +66,11 @@ const CalculatedWagesView = () => {
   const handleOpenPayment = (laborer) => {
     setSelectedLaborerForPay(laborer);
     setIsRecordPaymentOpen(true);
+  };
+
+  const handleOpenExtraPayment = (laborer) => {
+    setSelectedLaborerForExtraPay(laborer);
+    setIsRecordExtraPaymentOpen(true);
   };
 
   const handlePaymentSuccess = (newPayment, currentWage) => {
@@ -101,7 +111,7 @@ const CalculatedWagesView = () => {
             Audit shift wages, calculate 1.5x overtime compensations, and record finalized payroll disbursements.
           </p>
         </div>
-        <div className="page-actions">
+        <div className="page-actions" style={{ flexWrap: 'wrap', gap: '10px' }}>
           <div className="tab-switcher" style={{ marginRight: '8px' }}>
             <button
               className={`tab-btn ${activeTab === 'wages' ? 'active' : ''}`}
@@ -115,7 +125,14 @@ const CalculatedWagesView = () => {
               onClick={() => setActiveTab('history')}
             >
               <History size={15} style={{ marginRight: '4px' }} />
-              Disbursement History ({payments.length})
+              Disbursement History ({wagePayments.length})
+            </button>
+            <button
+              className={`tab-btn ${activeTab === 'extra' ? 'active' : ''}`}
+              onClick={() => setActiveTab('extra')}
+            >
+              <Gift size={15} style={{ marginRight: '4px' }} />
+              Extra Payments ({extraPayments.length})
             </button>
           </div>
 
@@ -125,6 +142,22 @@ const CalculatedWagesView = () => {
           >
             <CreditCard size={18} />
             Record Payment
+          </button>
+
+          <button
+            className="btn"
+            onClick={() => handleOpenExtraPayment(null)}
+            style={{
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: '#fff',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <Gift size={18} />
+            Make Extra Payment
           </button>
         </div>
       </div>
@@ -303,9 +336,23 @@ const CalculatedWagesView = () => {
                               className="btn btn-primary btn-sm"
                               style={{ padding: '4px 10px', fontSize: '0.78rem' }}
                               onClick={() => handleOpenPayment(laborer)}
-                              title="Disburse payment to laborer"
+                              title="Disburse regular wage payment"
                             >
                               <DollarSign size={13} /> Pay
+                            </button>
+                            <button
+                              className="btn btn-sm"
+                              style={{
+                                padding: '4px 10px',
+                                fontSize: '0.78rem',
+                                background: 'rgba(16, 185, 129, 0.15)',
+                                color: 'var(--emerald)',
+                                border: '1px solid rgba(16, 185, 129, 0.3)'
+                              }}
+                              onClick={() => handleOpenExtraPayment(laborer)}
+                              title="Disburse extra bonus or allowance"
+                            >
+                              <Gift size={13} /> Extra
                             </button>
                           </div>
                         </td>
@@ -317,6 +364,8 @@ const CalculatedWagesView = () => {
             </table>
           </div>
         </>
+      ) : activeTab === 'extra' ? (
+        <ExtraPaymentsView onNavigateToWages={() => setActiveTab('wages')} />
       ) : (
         /* Payment Disbursement History */
         <div className="table-container">
@@ -335,14 +384,14 @@ const CalculatedWagesView = () => {
               </tr>
             </thead>
             <tbody>
-              {payments.length === 0 ? (
+              {wagePayments.length === 0 ? (
                 <tr>
                   <td colSpan="9" style={{ textAlign: 'center', padding: '42px', color: 'var(--text-muted)' }}>
-                    No finalized payments recorded yet.
+                    No finalized regular wage payments recorded yet.
                   </td>
                 </tr>
               ) : (
-                payments.map((p) => {
+                wagePayments.map((p) => {
                   const laborer = calculatedWages.find((w) => w.laborer.id === p.laborerId)?.laborer;
                   const wage = calculatedWages.find((w) => w.laborer.id === p.laborerId);
 
@@ -407,6 +456,17 @@ const CalculatedWagesView = () => {
           setSelectedLaborerForPay(null);
         }}
         laborer={selectedLaborerForPay}
+        onSuccessPayment={handlePaymentSuccess}
+      />
+
+      {/* Record Extra Payment Modal */}
+      <RecordExtraPaymentModal
+        isOpen={isRecordExtraPaymentOpen}
+        onClose={() => {
+          setIsRecordExtraPaymentOpen(false);
+          setSelectedLaborerForExtraPay(null);
+        }}
+        laborer={selectedLaborerForExtraPay}
         onSuccessPayment={handlePaymentSuccess}
       />
 
