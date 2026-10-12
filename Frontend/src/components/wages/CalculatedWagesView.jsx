@@ -135,30 +135,6 @@ const CalculatedWagesView = () => {
               Extra Payments ({extraPayments.length})
             </button>
           </div>
-
-          <button
-            className="btn btn-primary"
-            onClick={() => handleOpenPayment(null)}
-          >
-            <CreditCard size={18} />
-            Record Payment
-          </button>
-
-          <button
-            className="btn"
-            onClick={() => handleOpenExtraPayment(null)}
-            style={{
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              color: '#fff',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <Gift size={18} />
-            Make Extra Payment
-          </button>
         </div>
       </div>
 
